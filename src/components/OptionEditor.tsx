@@ -31,11 +31,11 @@ export function OptionEditor() {
         <div style={{ "width": t2p(videoTime()), "flex-shrink": 1 }}></div>
         <div class="flex shrink-0 b-0 b-l-4 b-solid b-yellow ml--0.5">
           <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'start', videoTime()) }}>
-            <i class="i-mdi-format-horizontal-align-left"></i> as begin
+            <i class="i-mdi-arrow-expand-right"></i> as start
           </button>
           <NumberInput precise={2} value={videoTime()} onChange={t => { videoEl.currentTime = t }} />
           <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'end', videoTime()) }}>
-            <i class="i-mdi-format-horizontal-align-right"></i> as end
+            as end <i class="i-mdi-arrow-expand-left"></i>
           </button>
         </div>
       </div>
@@ -52,7 +52,12 @@ export function OptionEditor() {
 
         <div>
           <label class="font-bold inline-block w-24 text-right mr-2">Speed</label>
-          <NumberInput value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0.01} max={10} />x
+          <NumberInput precise={2} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0.01} max={10} />x
+        </div>
+
+        <div>
+          <label class="font-bold inline-block w-24 text-right mr-2">Framerate</label>
+          <NumberInput value={store.options.framerate} onChange={t => { updateStore('options', 'framerate', t); }} min={1} max={60} /> frames per second
         </div>
 
         <div>
@@ -82,6 +87,15 @@ export function OptionEditor() {
         <div>
           <label class="font-bold inline-block w-24 text-right mr-2">Ouput</label>
           {outSize().width} × {outSize().height}
+        </div>
+
+        <h3>Color</h3>
+
+        <div>
+          <label class="font-bold inline-block w-24 text-right mr-2">Color Count</label>
+          <select value={store.options.colorCount} onChange={e => { updateStore('options', 'colorCount', parseInt(e.currentTarget.value)) }}>
+            {[256, 128, 64, 32, 24, 16, 8, 4].map(x => <option value={x}>{x}</option>)}
+          </select>
         </div>
 
       </div>

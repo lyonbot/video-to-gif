@@ -2,6 +2,8 @@ import { Show, createEffect, createRoot, type Component } from 'solid-js';
 import { store } from './store';
 import { FileSelector } from './components/FileSelector';
 import { OptionEditor } from './components/OptionEditor';
+import { ProcessingBar } from './components/Processing';
+import { OutputDisplay } from './components/OutputDisplay';
 
 const App: Component = () => {
   return (
@@ -16,12 +18,8 @@ const App: Component = () => {
           <h2>Step2. Options</h2>
           <OptionEditor />
         </section>
-      </Show>
-
-      <Show when={!store.ffmpeg}>
-        <div class="bg-amber">
-          ffmpeg is loading...
-        </div>
+        <OutputDisplay />
+        <ProcessingBar />
       </Show>
     </div>
   );

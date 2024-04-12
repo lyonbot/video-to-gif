@@ -11,3 +11,7 @@
     @apply outline-0 b-orange-7;
   }
 }
+
+.startButton {
+  @apply cursor-pointer px-4 py-2 bg-blue b-0 rounded text-xl text-white;
+}
