@@ -1,0 +1,13 @@
+.App {
+  position: relative;
+}
+
+.uploadAcceptArea {
+  @apply border-3 b-slate-8 b-dashed bg-slate-2 rounded-xl cursor-pointer max-w-4xl mx-auto;
+  @apply py-16 px-4 flex flex-col gap-4 items-center justify-center text-3xl text-slate-8;
+
+  &:focus,
+  &.dragOver {
+    @apply outline-0 b-orange-7;
+  }
+}

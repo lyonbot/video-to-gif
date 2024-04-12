@@ -1,0 +1,26 @@
+{
+  "name": "vite-template-solid",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@iconify-json/mdi": "^1.1.66",
+    "solid-devtools": "^0.29.3",
+    "typescript": "^5.4.5",
+    "unocss": "^0.59.2",
+    "vite": "^5.2.8",
+    "vite-plugin-solid": "^2.10.2"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
+    "sass": "^1.75.0",
+    "solid-js": "^1.8.16"
+  }
+}
