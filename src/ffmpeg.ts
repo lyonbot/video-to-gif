@@ -9,7 +9,7 @@ export async function initFFmpeg() {
   const baseURL = 'https://unpkg.com/@ffmpeg/core@' + CORE_VERSION + '/dist/esm'
 
   // Load the WASM file and coreURL
-  const [coreURL, wasmURL,classWorkerURL] = await Promise.all([
+  const [coreURL, wasmURL, classWorkerURL] = await Promise.all([
     toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
     workerURL

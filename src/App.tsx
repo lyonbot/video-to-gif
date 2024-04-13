@@ -1,5 +1,5 @@
 import { Show, createEffect, createMemo, createRoot, type Component } from 'solid-js';
-import { store } from './store';
+import { store, updateStore } from './store';
 import { FileSelector } from './components/FileSelector';
 import { OptionEditor } from './components/OptionEditor';
 import { ProcessingBar } from './components/Processing';
@@ -25,13 +25,17 @@ const App: Component = () => {
         <div class='flex gap-4 mx-auto max-w-7xl flex-col lg:flex-row'>
           <div class="flex-1">
             <OptionEditor />
+
+            <a
+              href="#" class='mt-2 block text-slate-8 text-center hover:text-blue'
+              onClick={() => updateStore({ file: null, fileInfo: { ...store.fileInfo, url: '' } })}
+            >Choose another file...</a>
           </div>
           <div class="flex-1">
             <ProcessingBar />
             {out()}
           </div>
         </div>
-
       </Show>
 
       <footer class="text-center my-20">

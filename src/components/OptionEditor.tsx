@@ -1,5 +1,5 @@
 import { createComputed, createMemo, createSignal } from "solid-js";
-import { outputSize, store, updateStore } from "../store";
+import { outputSize, outputTimeRange, store, updateStore } from "../store";
 import { startMouseMove } from 'yon-utils'
 
 export function OptionEditor() {
@@ -91,7 +91,6 @@ export function OptionEditor() {
         break;
     }
   }
-  const computedDuration = createMemo(() => ((store.options.end - store.options.start) / store.options.speed));
 
   function OptionGroupHeader(props: { children: any }) {
     return <h3 class="font-normal p-2 px-4 rounded leading-none text-cyan-1 mt-12">{props.children}</h3>
@@ -151,7 +150,7 @@ export function OptionEditor() {
 
         <div>
           <OptionLabel>Duration</OptionLabel>
-          ≈ {computedDuration().toFixed(2)}s ({(computedDuration() * store.options.framerate).toFixed(0)} frames)
+          ≈ {outputTimeRange().duration.toFixed(2)}s ({outputTimeRange().frameCount} frames)
         </div>
 
         <OptionGroupHeader>

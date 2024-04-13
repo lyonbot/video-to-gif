@@ -42,6 +42,28 @@ export const outputSize = createRoot(() => {
   })
 })
 
+export const outputTimeRange = createRoot(() => {
+  return createMemo(() => {
+    const { start: sourceStart, end: sourceEnd, speed, framerate } = store.options;
+
+    const duration = (sourceEnd - sourceStart) / speed
+    const frameCount = Math.ceil(duration * framerate);
+
+    const outputFramePresentTimeMS = Array.from({ length: frameCount }, (_, i) => Math.round(i / frameCount * duration * 1e3))
+    const outputFrameDurationMS = outputFramePresentTimeMS.map((t, i) => (i === frameCount - 1 ? duration : outputFramePresentTimeMS[i + 1]) - t)
+
+    return {
+      sourceStart,
+      sourceEnd,
+
+      duration,
+      frameCount,
+      outputFramePresentTimeMS,
+      outputFrameDurationMS,
+    }
+  })
+})
+
 createRoot(() => {
   createEffect(() => {
     updateStore('fileInfo', { url: '' })

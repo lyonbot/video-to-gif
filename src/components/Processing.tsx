@@ -1,104 +1,42 @@
-import { Show, createEffect, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
-import { outputSize, store, updateStore } from "../store";
+import { outputSize, outputTimeRange, store, updateStore } from "../store";
+import { grabFramesWithMP4Box } from "../convertor/frameGrabber";
+import { delay } from "yon-utils";
 
 export function ProcessingBar() {
-  let prevMediumHash = '';
-  let prevMediumData: any
-  createEffect(() => {
-    store.file; // when file changes
-    prevMediumHash = ''; // reset hash
-    prevMediumData = null
-  })
-  const computeMediumHash = () => {
-    const { file, options } = store;
-    if (!file) return ''
-
-    return [options.framerate, options.width, options.height, options.start, options.end, options.speed].join('/')
-  }
-
   let [isRunning, setIsRunning] = createSignal(false)
   let [progress, setProgress] = createSignal('');
   let [percentage, setPercentage] = createSignal(0);
+  let [errorMessage, setErrorMessage] = createSignal('');
+
+  let [isUseFFMpeg, setIsUseFFMpeg] = createSignal(true);
 
   async function processWithGIFjs() {
-    const frames = [] as { data: Uint8ClampedArray, t: number }[]
+    const fetched = await grabFramesAndCombine()
+    const { outputFrameDurationMS } = outputTimeRange()
 
-    let mediumHash = computeMediumHash()
-    if (prevMediumData && prevMediumHash === mediumHash) {
-      // use cached data
-      frames.push(...prevMediumData)
-    } else {
-      // recompute 
-      prevMediumData = null
-      prevMediumHash = ''
-
-      setPercentage(0)
-      setProgress('Loading video file')
-
-      const video = document.createElement('video')
-      const videoReady = new Promise(r => video.onloadedmetadata = r)
-      video.muted = true
-      video.src = store.fileInfo.url
-
-      const canvas = document.createElement('canvas')
-      canvas.width = outputSize().width
-      canvas.height = outputSize().height
-
-      const ctx = canvas.getContext('2d', { willReadFrequently: true })!
-
-      await videoReady
-      const videoPlaying = new Promise(r => video.onplaying = r)
-      video.currentTime = store.options.start
-      video.play()
-      await videoPlaying
-      video.pause()
-      video.currentTime = store.options.start
-      video.onplaying = null
-
-      // const captureStream = (video as any).captureStream()
-      // const videoTrack = captureStream.getVideoTracks()[0]
-      // const imageCapture = new ImageCapture(videoTrack)
-
-      setProgress('Grabbing frames')
-      const frameCount = Math.max(1, Math.floor((store.options.end - store.options.start) / store.options.speed * store.options.framerate))
-      for (let i = 0; i < frameCount; i++) {
-        if (!isRunning()) return;
-
-        const frameTime = store.options.start + i * (store.options.end - store.options.start) / frameCount
-        const seekEnd = new Promise(r => video.onseeked = r)
-        video.currentTime = frameTime
-        await seekEnd
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-        frames.push({ data, t: Math.round((frameTime - store.options.start) / store.options.speed * 1000) })
-
-        setPercentage(i / frameCount * 100)
+    const frames: { data: Uint8Array, delay: number }[] = Array.from({ length: fetched.frameCount }, (_, i) => {
+      const data = fetched.combined.slice(i * fetched.frameDataSize, (i + 1) * fetched.frameDataSize)
+      return {
+        data,
+        delay: outputFrameDurationMS[i]
       }
-
-      prevMediumHash = mediumHash
-      prevMediumData = frames
-    }
+    })
 
     setPercentage(-1)
     setProgress('Encoding to GIF')
+    console.time('encoding to gif')
     const output = await GIFEncode({
       workerUrl: GIFWorkerJS as unknown as string,
       width: outputSize().width,
       height: outputSize().height,
       maxColors: store.options.maxColors,
       format: "arrayBuffer",
-
-      frames: frames.map((f, i) => {
-        const delay = i < frames.length - 1 ? frames[i + 1].t - f.t : Math.round(1000 / store.options.framerate)
-        return {
-          data: f.data,
-          delay
-        }
-      }),
+      frames,
     })
+    console.timeEnd('encoding to gif')
 
     setPercentage(100)
     setProgress('Finished')
@@ -124,54 +62,75 @@ export function ProcessingBar() {
       console.log('FF', type, message)
     })
     ffmpeg.on('progress', ({ progress, time }) => {
+      setPercentage((progress > 1 || progress < 0) ? -1 : (progress * 100))
       console.log('FFProgress', progress, time)
     })
 
-    const inputFilename = 'input' + /\.\w+$/.exec(file.name || '.mp4')![0]
+    // const inputFilename = 'input' + /\.\w+$/.exec(file.name || '.mp4')![0]
     const outputFilename = 'output.gif'
 
     // read file content to data
-    const inputData = await file.arrayBuffer()
-    await ffmpeg.writeFile(inputFilename, new Uint8Array(inputData))
+    // const inputData = await file.arrayBuffer()
+    // await ffmpeg.writeFile(inputFilename, new Uint8Array(inputData))
 
-    let vf: string[] = []
-    vf.push(`fps=${options.framerate || 12}`)
-    if (options.width !== -1 || options.height !== -1) {
-      vf.push(`scale=${options.width}:${options.height}`)
-    }
-    if (options.speed !== 1) {
-      vf.push(`setpts=PTS/${options.speed}`)
-      vf.push(`fps=${options.framerate || 12}`)
-    }
+    // let vf: string[] = []
+    // vf.push(`fps=${options.framerate || 12}`)
+    // if (options.width !== -1 || options.height !== -1) {
+    //   vf.push(`scale=${options.width}:${options.height}`)
+    // }
+    // if (options.speed !== 1) {
+    //   vf.push(`setpts=PTS/${options.speed}`)
+    //   vf.push(`fps=${options.framerate || 12}`)
+    // }
 
 
     // --------------------------------------------------
     // stage1
-    const stage1Filename = 'medium.mov'
-    const stage1Args = [
-      options.start > 0 && ['-ss', options.start.toString()],
-      options.end < store.fileInfo.duration && ['-to', options.end.toString()],
-      ['-an'],
-      ['-vf', `${vf.join(',')}`],
-      ['-vcodec', 'ffv1'],
-      ['-y', stage1Filename]
-    ].filter(Boolean) as string[][]
+    // const stage1Filename = 'medium.mov'
+    // const stage1Args = [
+    //   options.start > 0 && ['-ss', options.start.toString()],
+    //   options.end < store.fileInfo.duration && ['-to', options.end.toString()],
+    //   ['-an'],
+    //   ['-vf', `${vf.join(',')}`],
+    //   ['-vcodec', 'ffv1'],
+    //   ['-y', stage1Filename]
+    // ].filter(Boolean) as string[][]
 
-    let currentStage1Hash = stage1Args.map(a => a.join('/')).join('/')
-    if (currentStage1Hash === prevMediumHash) {
-      console.log('skip stage1')
-    } else {
-      prevMediumHash = currentStage1Hash
-      console.log('stage1 args = ', stage1Args)
-      const stage1Out = await ffmpeg.exec(['-i', inputFilename].concat(...stage1Args))
-      console.log('stage1 exit code = ' + stage1Out)
+    // let currentStage1Hash = stage1Args.map(a => a.join('/')).join('/')
+    // if (currentStage1Hash === prevMediumHash) {
+    //   console.log('skip stage1')
+    // } else {
+    //   prevMediumHash = currentStage1Hash
+    //   console.log('stage1 args = ', stage1Args)
+    //   const stage1Out = await ffmpeg.exec(['-i', inputFilename].concat(...stage1Args))
+    //   console.log('stage1 exit code = ' + stage1Out)
+    // }
+
+    // use WebCodec to decode file, which is much faster!
+    const stage1Filename = 'medium.raw'
+    const stage1DecodeArgs: string[] = []
+    {
+      const { width, height, frameCount, combined } = await grabFramesAndCombine()
+
+      setProgress('Sending to FFMpeg')
+      setPercentage(-1)
+      await ffmpeg.writeFile(stage1Filename, combined)
+      stage1DecodeArgs.push(
+        '-f', 'rawvideo',
+        '-pix_fmt', 'rgba',
+        '-video_size', `${width}x${height}`,
+        '-framerate', String(Math.round(frameCount / outputTimeRange().duration)),
+      )
     }
 
     //----------------------------------------------
     // stage2
+    setProgress('Encoding GIF with FFMpeg')
+    setPercentage(-1)
     const stage2Out = await ffmpeg.exec([
+      ...stage1DecodeArgs,
       '-i', stage1Filename,
-      '-vf', `fps=${options.framerate || 12},split[a][b];[a]palettegen=max_colors=${options.maxColors}[pal];[b][pal]paletteuse=dither=bayer`,
+      '-vf', `split[a][b];[a]palettegen=max_colors=${options.maxColors}[pal];[b][pal]paletteuse=dither=bayer`,
       '-y', outputFilename
     ])
     console.log('stage2 exit code = ' + stage2Out)
@@ -194,36 +153,154 @@ export function ProcessingBar() {
     updateStore('outputFileContent', outputData)
   }
 
+  async function grabFramesAndCombine() {
+    const frames = await grabFrames()
+
+    setProgress('Packing frames');
+    setPercentage(-1);
+    await delay(0);
+
+    const { width, height } = frames[0].bitmap;
+
+    const offCanvas = new OffscreenCanvas(width, height);
+    const ctx = offCanvas.getContext('2d', { willReadFrequently: true })!;
+
+    const frameDataSize = width * height * 4;
+    const buffer = new ArrayBuffer(frameDataSize * frames.length);
+    const combined = new Uint8Array(buffer);
+
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(frame.bitmap, 0, 0);
+      combined.set(ctx.getImageData(0, 0, width, height).data, i * frameDataSize);
+      frame.bitmap.close();
+    }
+
+    return { combined, width, height, frameCount: frames.length, frameDataSize };
+  }
+
+  async function grabFrames() {
+    const { sourceStart, sourceEnd, frameCount } = outputTimeRange()
+    const { file } = store
+    if (!file) throw new Error('no file')
+
+    setProgress('Grabbing Frames')
+    setPercentage(0)
+
+    const frames = await grabFramesWithMP4Box({
+      file,
+      resizeWidth: outputSize().width,
+      resizeHeight: outputSize().height,
+      frameTimestamps: Array.from({ length: frameCount }, (_, i) => sourceStart + i * (sourceEnd - sourceStart) / frameCount),
+      reportProgress(grabbedCount, frame) {
+        setPercentage(grabbedCount / frameCount * 100)
+
+        // debugging
+        // const can = document.createElement('canvas')
+        // can.width = frame.bitmap.width
+        // can.height = frame.bitmap.height
+        // document.body.appendChild(can)
+        // const ctx = can.getContext('2d')!
+        // ctx.drawImage(frame.bitmap, 0, 0)
+
+        return isRunning()
+      },
+    })
+
+    if (!isRunning()) throw new Error('Progress aborted')
+    return frames
+  }
+
   function startProcess() {
     setIsRunning(true)
-    processWithGIFjs().catch(error => {
+    setErrorMessage('')
+    console.time('process')
+
+    const run = isUseFFMpeg() ? processWithFFMpeg : processWithGIFjs;
+    run().catch(error => {
       console.error(error)
+      setErrorMessage(String(error))
     }).then(() => {
+      console.timeEnd('process')
       setIsRunning(false)
     })
   }
 
   return <div class="relative my-10 bg-white">
-    {/* <Show when={!store.ffmpeg}>
-      <i class="i-mdi-loading animate-spin"></i> ffmpeg is loading...
-    </Show> */}
-
     {
       !isRunning()
-        ? <button class="startButton" onClick={startProcess}> <i class="i-mdi-play"></i> Convert to GIF</button>
+        ? <button class="startButton" disabled={!store.ffmpeg && isUseFFMpeg()} onClick={startProcess}> <i class="i-mdi-play"></i> Convert to GIF</button>
         : <button class="stopButton" onClick={() => setIsRunning(false)}>Stop</button>
     }
 
+    {/* engine */}
+    <div class="text-center my-2 mb-4 text-gray text-xs flex flex-col gap-2">
+      <div>
+        {
+          isUseFFMpeg()
+            ? <><i class="i-mdi-application-cog"></i> encode with ffmpeg</>
+            : <><i class="i-mdi-google-chrome"></i> encode with JavaScript</>
+        }
+
+        <a
+          class="ml-2 text-inherit"
+          classList={{ 'pointer-events-none op-60': isRunning() }}
+          href="#"
+          onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(!isUseFFMpeg()) }}
+        >
+          (Change)
+        </a>
+      </div>
+
+      <Show when={!store.ffmpeg && isUseFFMpeg()}>
+        <div class="text-blue">
+          <i class="i-mdi-loading animate-spin"></i> ffmpeg is loading...
+          <a class="ml-2 text-inherit" href="#" onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(false) }}>Use other encoder</a>
+        </div>
+      </Show>
+    </div>
+
+    <WarningMsg
+      when={outputSize().width > 600}
+      message={`width ${outputSize().width} is kinda large.`}
+      fix={() => updateStore('options', 'width', 600)}
+    />
+    <WarningMsg
+      when={outputSize().height > 600}
+      message={`height ${outputSize().height} is kinda large.`}
+      fix={() => updateStore('options', 'height', 600)}
+    />
+    <WarningMsg
+      when={outputTimeRange().frameCount > 200}
+      message="too many frames yield large GIF. please trim the video, or lowing framerate."
+    />
+
+    <Show when={errorMessage()}>
+      <div class="text-center my-4 text-red-7">
+        <i class="i-mdi-alert-circle"></i> {errorMessage()}
+      </div>
+    </Show>
+
     <Show when={isRunning()}>
-      <div class="text-center my-2">
+      <div class="text-center my-4">
         <i class="i-mdi-loading animate-spin mr-1"></i>
         {progress()}
       </div>
       <Show when={percentage() >= 0}>
         <div class="relative max-w-lg h-2 bg-gray-3 mx-auto rounded overflow-hidden">
-          <div class="h-full bg-blue-500 transition" style={{ width: `${percentage()}%` }}></div>
+          <div class="h-full bg-blue-5 transition" style={{ width: `${percentage()}%` }}></div>
         </div>
       </Show>
     </Show>
   </div>
+}
+
+function WarningMsg(props: { message: string, when: any, fix?: () => void }) {
+  return <Show when={props.when}>
+    <div class="text-left text-gray text-sm">
+      <i class="i-mdi-info-circle"></i> {props.message}
+      {props.fix && <a class="ml-2 text-blue" href="#" onClick={e => { e.preventDefault(); props.fix!() }}>(Fix It)</a>}
+    </div>
+  </Show>
 }

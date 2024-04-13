@@ -36,6 +36,7 @@ export const FileSelector: Component = () => {
       <div class='font-500 text-center'>
         Choose Video ...
         <div class='text-4 op-60'> or drop your file here</div>
+        <div class='mt-4 text-4 mb--8 op-30'> file will NOT be uploaded</div>
       </div>
     </div>
   );

@@ -42,6 +42,8 @@ textarea {
 .startButton {
   @apply block cursor-pointer mx-auto px-6 py-3;
   @apply bg-blue b-0 rounded-xl text-xl text-white;
+
+  @apply disabled:bg-gray disabled:cursor-default;
 }
 
 .stopButton {
