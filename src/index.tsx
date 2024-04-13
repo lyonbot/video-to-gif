@@ -4,7 +4,7 @@ import { render } from 'solid-js/web';
 import 'virtual:uno.css'
 import './index.scss';
 import App from './App';
-import { initFFmpeg } from './ffmpeg';
+// import { initFFmpeg } from './ffmpeg';
 
 const root = document.getElementById('root');
 
@@ -14,5 +14,5 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-initFFmpeg()
+// initFFmpeg()
 render(() => <App />, root!);

@@ -1,17 +1,50 @@
 .App {
   position: relative;
+  font-family: "Open Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+button,
+input,
+select,
+textarea {
+  font-size: inherit;
+  font-family: inherit;
 }
 
 .uploadAcceptArea {
   @apply border-3 b-slate-8 b-dashed bg-slate-2 rounded-xl cursor-pointer max-w-4xl mx-auto;
   @apply py-16 px-4 flex flex-col gap-4 items-center justify-center text-3xl text-slate-8;
+  transition: 0.2s;
+
+  .movieFileIcon {
+    transition: 0.2s;
+  }
+
+  &:hover {
+    transition: 0.4s;
+    box-shadow: 0 0 0 5px #fff, 0 0 0 10px currentColor;
+  }
 
   &:focus,
   &.dragOver {
-    @apply outline-0 b-orange-7;
+    @apply outline-0 b-orange-7 b-solid;
+
+    .movieFileIcon {
+      transform: translateY(-3px);
+    }
   }
 }
 
 .startButton {
-  @apply cursor-pointer px-4 py-2 bg-blue b-0 rounded text-xl text-white;
+  @apply block cursor-pointer mx-auto px-6 py-3;
+  @apply bg-blue b-0 rounded-xl text-xl text-white;
+}
+
+.stopButton {
+  @apply block cursor-pointer mx-auto px-6 py-3;
+  @apply bg-orange b-0 rounded-xl text-xl text-white;
 }

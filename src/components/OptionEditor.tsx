@@ -1,31 +1,118 @@
 import { createComputed, createMemo, createSignal } from "solid-js";
-import { store, updateStore } from "../store";
+import { outputSize, store, updateStore } from "../store";
+import { startMouseMove } from 'yon-utils'
 
 export function OptionEditor() {
   var videoEl: HTMLVideoElement
   const [videoTime, setVideoTime] = createSignal(0)
   const t2p = (t: number) => (t / store.fileInfo.duration) * 100 + '%'
 
-  const outSize = createMemo(() => {
-    const { width: ow, height: oh } = store.fileInfo;
-    const { width: nw, height: nh } = store.options;
+  function seekTo(t: number) {
+    setVideoTime(t);
+    videoEl.pause();
+    videoEl.currentTime = t
+  }
 
-    let w = nw, h = nh;
-    if (nw === -1 && nh === -1) { w = ow; h = oh; }
-    else if (nw === -1) { w = ow * (nh / oh); }
-    else if (nh === -1) { h = oh * (nw / ow); }
+  var timelineEl: HTMLDivElement
 
-    return { width: Math.floor(w), height: Math.floor(h) }
-  })
+  function TimelineThumb(props: { class: string, time: number, onUpdate(t: number): void }) {
+    return <div
+      class={"w-4 h-full pos-absolute top-0 ml--2 cursor-ew-resize " + props.class}
+      style={{ left: t2p(props.time) }}
+      onPointerDown={ev => {
+        ev.preventDefault()
+        timelineEl.focus()
+
+        const w = timelineEl.clientWidth
+        const duration = videoEl.duration
+        const t0 = props.time
+
+        seekTo(t0)
+
+        startMouseMove({
+          initialEvent: ev,
+          onMove(data) {
+            let deltaT = data.deltaX / w * duration
+            let t = t0 + deltaT
+            if (t < 0) t = 0
+            if (t > duration) t = duration
+
+            if (Math.abs(t - t0) > 0.05) props.onUpdate(t)
+          },
+        })
+      }}
+    />
+  }
+
+  const handleSeekingOnBar = (e: PointerEvent) => {
+    if (timelineEl === e.target) {
+      const w = timelineEl.clientWidth;
+      const duration = videoEl.duration;
+      e.preventDefault();
+      timelineEl.focus();
+
+      startMouseMove({
+        initialEvent: e,
+        onMove(data) {
+          let t = data.event.offsetX / w * duration;
+          if (t < 0) t = 0;
+          if (t > duration) t = duration;
+          seekTo(t);
+        }
+      });
+    }
+  };
+
+  const handleKeypressOnBar = (e: KeyboardEvent) => {
+    switch (e.code) {
+      case 'ArrowLeft':
+        seekTo(videoTime() - 0.2)
+        e.preventDefault();
+        break;
+
+      case 'ArrowRight':
+        seekTo(videoTime() + 0.2)
+        e.preventDefault();
+        break;
+
+      case 'ArrowUp':
+        seekTo(videoTime() - 1)
+        e.preventDefault();
+        break;
+
+      case 'ArrowDown':
+        seekTo(videoTime() + 1)
+        e.preventDefault();
+        break;
+
+      case 'Space':
+        videoEl.paused ? videoEl.play() : videoEl.pause()
+        e.preventDefault();
+        break;
+    }
+  }
+  const computedDuration = createMemo(() => ((store.options.end - store.options.start) / store.options.speed));
+
+  function OptionGroupHeader(props: { children: any }) {
+    return <h3 class="font-normal p-2 px-4 rounded leading-none text-cyan-1 mt-12">{props.children}</h3>
+  }
+
+  function OptionLabel(props: { children: any }) {
+    return <label class="op-60 inline-block w-24 text-right mr-2">{props.children}</label>
+  }
 
   return <div>
 
     <div class="mx-auto max-w-4xl relative flex flex-col bg-gray-8 text-white rounded-xl overflow-hidden">
       <video ref={x => (videoEl = x)} src={store.fileInfo.url} class="w-full h-64 outline-0" controls ontimeupdate={x => setVideoTime(x.currentTarget.currentTime)} />
-      <div class="flex h-4 relative overflow-hidden">
-        <div class="w-4 h-full pos-absolute top-0 ml--2 bg-yellow" style={{ left: t2p(videoTime()) }}></div>
-        <div class="w-4 h-full pos-absolute top-0 ml--2 bg-green" style={{ left: t2p(store.options.start) }}></div>
-        <div class="w-4 h-full pos-absolute top-0 ml--2 bg-blue" style={{ left: t2p(store.options.end) }}></div>
+      <div
+        class="flex h-4 relative overflow-hidden outline-0 bg-gray-9 b-0 b-solid b-b-5 b-black"
+        ref={e => (timelineEl = e)}
+        onPointerDown={handleSeekingOnBar} tabindex={-1} onKeyDown={handleKeypressOnBar}
+      >
+        <TimelineThumb class="bg-yellow" time={videoTime()} onUpdate={seekTo} />
+        <TimelineThumb class="bg-green" time={store.options.start} onUpdate={t => { seekTo(t), updateStore('options', 'start', t) }} />
+        <TimelineThumb class="bg-blue" time={store.options.end} onUpdate={t => { seekTo(t), updateStore('options', 'end', t) }} />
       </div>
       <div class="flex">
         <div style={{ "width": t2p(videoTime()), "flex-shrink": 1 }}></div>
@@ -33,68 +120,78 @@ export function OptionEditor() {
           <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'start', videoTime()) }}>
             <i class="i-mdi-arrow-expand-right"></i> as start
           </button>
-          <NumberInput precise={2} value={videoTime()} onChange={t => { videoEl.currentTime = t }} />
+          <NumberInput precise={2} value={videoTime()} onChange={seekTo} />
           <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'end', videoTime()) }}>
             as end <i class="i-mdi-arrow-expand-left"></i>
           </button>
         </div>
       </div>
 
-      <div class='m-2 my-8'>
-        <h3>Time</h3>
+      <div class='mb-4'>
+        <OptionGroupHeader>
+          <i class="i-mdi-content-cut"></i> Trimming
+        </OptionGroupHeader>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Range</label>
-          <NumberInput class="b-green b-solid b-l-4" precise={2} value={store.options.start} onChange={t => { updateStore('options', 'start', t); setVideoTime(t) }} />
+          <OptionLabel>Range</OptionLabel>
+          <NumberInput class="b-green b-solid b-l-4" precise={2} value={store.options.start} onChange={t => { updateStore('options', 'start', t); seekTo(t) }} />
           {" - "}
-          <NumberInput class="b-blue b-solid b-l-4" precise={2} value={store.options.end} onChange={t => { updateStore('options', 'end', t); setVideoTime(t) }} />
+          <NumberInput class="b-blue b-solid b-l-4" precise={2} value={store.options.end} onChange={t => { updateStore('options', 'end', t); seekTo(t) }} />
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Speed</label>
-          <NumberInput precise={2} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0.01} max={10} />x
+          <OptionLabel> <i class="i-mdi-play-speed"></i> Speed</OptionLabel>
+          <NumberInput defaults={1} precise={2} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0.01} max={10} />x
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Framerate</label>
+          <OptionLabel>Framerate</OptionLabel>
           <NumberInput value={store.options.framerate} onChange={t => { updateStore('options', 'framerate', t); }} min={1} max={60} /> frames per second
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Duration</label>
-          ≈ {((store.options.end - store.options.start) / store.options.speed).toFixed(2)}s
+          <OptionLabel>Duration</OptionLabel>
+          ≈ {computedDuration().toFixed(2)}s ({(computedDuration() * store.options.framerate).toFixed(0)} frames)
         </div>
 
-        <h3>Dimension</h3>
+        <OptionGroupHeader>
+          <i class="i-mdi-move-resize"></i> Dimension
+        </OptionGroupHeader>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Width</label>
-          <NumberInput value={store.options.width} onChange={t => { updateStore('options', 'width', t) }} />
+          <OptionLabel>Width</OptionLabel>
+          <NumberInput value={store.options.width} defaults={-1} onChange={t => { updateStore('options', 'width', t) }} />
           {store.options.width === -1 && <span class="op-70 ml-2">(auto)</span>}
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Height</label>
-          <NumberInput value={store.options.height} onChange={t => { updateStore('options', 'height', t) }} />
+          <OptionLabel>Height</OptionLabel>
+          <NumberInput value={store.options.height} defaults={-1} onChange={t => { updateStore('options', 'height', t) }} />
           {store.options.height === -1 && <span class="op-70 ml-2">(auto)</span>}
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Original</label>
+          <OptionLabel>Original</OptionLabel>
           {store.fileInfo.width} × {store.fileInfo.height}
         </div>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Ouput</label>
-          {outSize().width} × {outSize().height}
+          <OptionLabel>Output</OptionLabel>
+          {outputSize().width} × {outputSize().height}
         </div>
 
-        <h3>Color</h3>
+        <OptionGroupHeader>
+          <i class="i-mdi-package-down"></i> GIF Output
+        </OptionGroupHeader>
 
         <div>
-          <label class="font-bold inline-block w-24 text-right mr-2">Color Count</label>
-          <select value={store.options.colorCount} onChange={e => { updateStore('options', 'colorCount', parseInt(e.currentTarget.value)) }}>
-            {[256, 128, 64, 32, 24, 16, 8, 4].map(x => <option value={x}>{x}</option>)}
+          <OptionLabel>Max Colors</OptionLabel>
+          <select
+            class="bg-gray-6 text-white b-0 p-2 py-1"
+            value={store.options.maxColors}
+            onChange={e => { updateStore('options', 'maxColors', parseInt(e.currentTarget.value)) }}
+          >
+            {[255, 128, 64, 32, 24, 16, 8, 4].map(x => <option value={x}>{x}</option>)}
           </select>
         </div>
 
@@ -105,6 +202,7 @@ export function OptionEditor() {
 
 function NumberInput(props: {
   value: number
+  defaults?: number
   precise?: number
   onChange?: (v: number) => void
   class?: string
@@ -120,7 +218,8 @@ function NumberInput(props: {
     onChange={e => {
       const val = parseFloat(e.currentTarget.value);
       if (Number.isNaN(val)) {
-        e.currentTarget.value = getDisplayNum()
+        e.currentTarget.value = String(props.defaults ?? getDisplayNum())
+        if (typeof props.defaults === 'number') props.onChange?.(props.defaults)
         return
       }
       return props.onChange?.(val);

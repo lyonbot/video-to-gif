@@ -9,6 +9,7 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "types": ["vite/client"],
+    "lib": ["dom", "ES2022"],
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true

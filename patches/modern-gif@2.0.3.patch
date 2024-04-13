@@ -1,0 +1,24 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 6a0754baa04b158ecd3ea5710aa2545c6dba95a2..922097e7fa9ba49d918108cf862cf772a9aeb833 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1954,12 +1954,17 @@ class De {
+ }
+ class ze {
+   constructor(e) {
+-    var t;
++    var t, transferable=[];
++    e.frames.forEach(f => {
++      if (f.data.buffer instanceof ArrayBuffer) {
++        transferable.push(f.data.buffer);
++      }
++    })
+     this._encodingFrames = [], this._encodeUUID = 0, this._logger = new we(!!e.debug), this._config = this._resolveOptions(e), this._palette = new Re({
+       maxColors: this._config.maxColors,
+       premultipliedAlpha: this._config.premultipliedAlpha,
+       tint: this._config.tint
+-    }), this._config.workerUrl ? (this._worker = de({ workerUrl: this._config.workerUrl }), this._worker.call("encoder:init", e)) : (t = this._config.frames) == null || t.forEach((r) => this.encode(r));
++    }), this._config.workerUrl ? (this._worker = de({ workerUrl: this._config.workerUrl }), this._worker.call("encoder:init", e, transferable)) : (t = this._config.frames) == null || t.forEach((r) => this.encode(r));
+   }
+   _resolveOptions(e) {
+     ["width", "height"].forEach((s) => {

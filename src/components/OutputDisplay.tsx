@@ -9,16 +9,19 @@ function readableFileSize(size: number) {
 
 export function OutputDisplay() {
   return <Show when={store.outputFileURL}>
-    <section>
+    <section class="bg-slate-2 rounded-xl p-4 mt-4 animate-zoom-in animate-duration-300 animate-ease-out">
       <h2>Output</h2>
       <p>File size: {readableFileSize(store.outputFileContent?.length || 0)}</p>
       <p>
-        <a download="output.gif" href={store.outputFileURL}>
-          <i class="i-mdi-download"></i>
+        <a
+          class="decoration-none text-blue-500 hover:underline"
+          download={store.file!.name + ".gif"} href={store.outputFileURL}
+        >
+          <i class="i-mdi-download mr-1"></i>
           Download GIF
         </a>
       </p>
-      <img src={store.outputFileURL} alt="output" />
+      <img src={store.outputFileURL} alt="output" class="block mx-auto max-w-full rounded-xl" />
     </section>
   </Show>
 }

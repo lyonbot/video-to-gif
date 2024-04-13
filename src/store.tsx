@@ -1,17 +1,16 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
-import { createEffect, createRoot } from 'solid-js';
+import { createEffect, createMemo, createRoot } from 'solid-js';
 import { createStore } from 'solid-js/store';
 
 export const defaultOptions = {
-  colors: 256,
   start: 0,
   end: 0,
   speed: 1,
   width: -1,
   height: -1,
   framerate: 12,
-  colorCount: 256,
+  maxColors: 255,
 };
 
 export const [store, updateStore] = createStore({
@@ -28,6 +27,20 @@ export const [store, updateStore] = createStore({
   outputFileContent: null as null | FileData,
   outputFileURL: '',
 });
+
+export const outputSize = createRoot(() => {
+  return createMemo(() => {
+    const { width: ow, height: oh } = store.fileInfo;
+    const { width: nw, height: nh } = store.options;
+
+    let w = nw, h = nh;
+    if (nw === -1 && nh === -1) { w = ow; h = oh; }
+    else if (nw === -1) { w = ow * (nh / oh); }
+    else if (nh === -1) { h = oh * (nw / ow); }
+
+    return { width: Math.floor(w), height: Math.floor(h) }
+  })
+})
 
 createRoot(() => {
   createEffect(() => {
