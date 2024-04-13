@@ -255,7 +255,7 @@ export function ProcessingBar() {
 
       <Show when={!store.ffmpeg && isUseFFMpeg()}>
         <div class="text-gray">
-          <i class="i-mdi-loading animate-spin"></i> ffmpeg is loading...
+          <span class="animate-flash animate-iteration-count-10 animate-duration-4000"><i class="i-mdi-loading animate-spin"></i> ffmpeg is loading...</span>
           <a class="ml-2 text-blue" href="#" onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(false) }}>(Switch to other encoder)</a>
         </div>
       </Show>

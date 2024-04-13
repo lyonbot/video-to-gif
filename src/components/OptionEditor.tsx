@@ -133,14 +133,14 @@ export function OptionEditor() {
 
         <div>
           <OptionLabel>Range</OptionLabel>
-          <NumberInput class="b-green b-solid b-l-4" precise={2} value={store.options.start} onChange={t => { updateStore('options', 'start', t); seekTo(t) }} />
+          <NumberInput class="b-green b-solid b-l-4" precise={2} min={0} max={store.options.end} value={store.options.start} onChange={t => { updateStore('options', 'start', t); seekTo(t) }} />
           {" - "}
-          <NumberInput class="b-blue b-solid b-l-4" precise={2} value={store.options.end} onChange={t => { updateStore('options', 'end', t); seekTo(t) }} />
+          <NumberInput class="b-blue b-solid b-l-4" precise={2} min={store.options.start} max={store.fileInfo.duration} value={store.options.end} onChange={t => { updateStore('options', 'end', t); seekTo(t) }} />
         </div>
 
         <div>
           <OptionLabel> <i class="i-mdi-play-speed"></i> Speed</OptionLabel>
-          <NumberInput defaults={1} precise={2} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0.01} max={10} />x
+          <NumberInput defaults={1} precise={2} step={0.25} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0} max={10} />x
         </div>
 
         <div>
@@ -159,13 +159,13 @@ export function OptionEditor() {
 
         <div>
           <OptionLabel>Width</OptionLabel>
-          <NumberInput value={store.options.width} defaults={-1} onChange={t => { updateStore('options', 'width', t) }} />
+          <NumberInput value={store.options.width} min={-1} defaults={-1} onChange={t => { updateStore('options', 'width', t) }} />
           {store.options.width === -1 && <span class="op-70 ml-2">(auto)</span>}
         </div>
 
         <div>
           <OptionLabel>Height</OptionLabel>
-          <NumberInput value={store.options.height} defaults={-1} onChange={t => { updateStore('options', 'height', t) }} />
+          <NumberInput value={store.options.height} min={-1} defaults={-1} onChange={t => { updateStore('options', 'height', t) }} />
           {store.options.height === -1 && <span class="op-70 ml-2">(auto)</span>}
         </div>
 
@@ -203,6 +203,7 @@ function NumberInput(props: {
   value: number
   defaults?: number
   precise?: number
+  step?: number
   onChange?: (v: number) => void
   class?: string
   min?: number
@@ -214,6 +215,8 @@ function NumberInput(props: {
     value={getDisplayNum()}
     min={props.min}
     max={props.max}
+    step={props.step ?? 1}
+    type="number"
     onChange={e => {
       const val = parseFloat(e.currentTarget.value);
       if (Number.isNaN(val)) {
