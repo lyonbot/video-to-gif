@@ -13,12 +13,12 @@ export async function initFFmpeg() {
     toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
   ])
-  const classWorkerURL = new URL('@ffmpeg/ffmpeg/worker', import.meta.url)
+  // const classWorkerURL = new URL('@ffmpeg/ffmpeg/worker', import.meta.url)
 
   await ffmpeg.load({
     coreURL,
     wasmURL,
-    classWorkerURL: classWorkerURL.toString(),
+    // classWorkerURL: classWorkerURL.toString(),
   });
 
   updateStore({ ffmpeg })
