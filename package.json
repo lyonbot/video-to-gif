@@ -1,7 +1,9 @@
 {
-  "name": "vite-template-solid",
+  "name": "video-to-gif",
   "version": "0.0.0",
   "description": "",
+  "author": "lyonbot",
+  "homepage": "https://lyonbot.github.io/video-to-gif/",
   "type": "module",
   "scripts": {
     "start": "vite",
