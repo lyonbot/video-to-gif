@@ -244,7 +244,7 @@ export function ProcessingBar() {
         }
 
         <a
-          class="ml-2 text-inherit"
+          class="ml-2 text-inherit hover:text-blue"
           classList={{ 'pointer-events-none op-60': isRunning() }}
           href="#"
           onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(!isUseFFMpeg()) }}
@@ -254,9 +254,9 @@ export function ProcessingBar() {
       </div>
 
       <Show when={!store.ffmpeg && isUseFFMpeg()}>
-        <div class="text-blue">
+        <div class="text-gray">
           <i class="i-mdi-loading animate-spin"></i> ffmpeg is loading...
-          <a class="ml-2 text-inherit" href="#" onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(false) }}>Use other encoder</a>
+          <a class="ml-2 text-blue" href="#" onClick={(e) => { e.preventDefault(); setIsUseFFMpeg(false) }}>(Switch to other encoder)</a>
         </div>
       </Show>
     </div>
