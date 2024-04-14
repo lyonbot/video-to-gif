@@ -1,5 +1,5 @@
 import { Show, Index, createMemo, createSignal } from "solid-js";
-import { WatermarkConfig, getDefaultWatermark, outputSize, outputTimeRange, store, updateStore, watermarkLocation, watermarkTextAlign } from "../store";
+import { WatermarkConfig, ditcherOptions, getDefaultWatermark, outputSize, outputTimeRange, store, updateStore, watermarkLocation, watermarkTextAlign } from "../store";
 import { startMouseMove } from 'yon-utils'
 import JSON5 from 'json5'
 
@@ -194,6 +194,17 @@ export function OptionEditor() {
             onChange={e => { updateStore('options', 'maxColors', parseInt(e.currentTarget.value)) }}
           >
             {[255, 128, 64, 32, 24, 16, 8, 4].map(x => <option value={x}>{x}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <OptionLabel>Ditcher</OptionLabel>
+          <select
+            class="bg-gray-6 text-white b-0 p-2 py-1"
+            value={store.options.ditcher}
+            onChange={e => { updateStore('options', 'ditcher', e.currentTarget.value) }}
+          >
+            {ditcherOptions.map(x => <option value={x}>{x}</option>)}
           </select>
         </div>
 

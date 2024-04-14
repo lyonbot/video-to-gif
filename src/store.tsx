@@ -17,6 +17,13 @@ export enum watermarkTextAlign {
   right = 'right',
 }
 
+export const ditcherOptions = [
+  'none',
+  'sierra2_4a',
+  'bayer',
+  'floyd_steinberg',
+]
+
 export const defaultOptions = {
   start: 0,
   end: 0,
@@ -25,6 +32,7 @@ export const defaultOptions = {
   height: -1,
   framerate: 12,
   maxColors: 255,
+  ditcher: 'sierra2_4a',
   watermarkIndex: -1,
 };
 
