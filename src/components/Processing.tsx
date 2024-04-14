@@ -240,7 +240,7 @@ export function ProcessingBar() {
     }
 
     {/* engine */}
-    <div class="text-center my-2 mb-4 text-gray text-xs flex flex-col gap-2">
+    <div class="text-center my-2 mb-4 text-gray text-sm flex flex-col gap-2">
       <div>
         {
           isUseFFMpeg()

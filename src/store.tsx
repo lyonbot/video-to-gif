@@ -1,6 +1,6 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
-import { createEffect, createMemo, createRoot, on } from 'solid-js';
+import { createEffect, createMemo, createRoot, on, onCleanup } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { debounce } from 'lodash-es';
 
@@ -126,9 +126,7 @@ createRoot(() => {
     video.src = url;
     video.muted = true;
 
-    return () => {
-      URL.revokeObjectURL(url)
-    }
+    onCleanup(() => { URL.revokeObjectURL(url) })
   })
 
   createEffect(() => {
@@ -147,9 +145,7 @@ createRoot(() => {
     const url = URL.createObjectURL(blob);
     updateStore('outputFileURL', url)
 
-    return () => {
-      URL.revokeObjectURL(url)
-    }
+    onCleanup(() => { URL.revokeObjectURL(url) })
   })
 
   // watermark sync

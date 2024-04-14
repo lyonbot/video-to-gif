@@ -31,7 +31,7 @@ export const FileSelector: Component = () => {
       onPaste={handlePaste}
       onClick={() => { fileInput.value = ""; fileInput.click(); }}
     >
-      <input class='hidden w-0 h-0' ref={x => (fileInput = x)} type="file" accept="video/*" onChange={e => updateStore({ file: e.target.files![0] })} />
+      <input class='absolute op-0 w-0 h-0' ref={x => (fileInput = x)} type="file" accept="video/*" onChange={e => updateStore({ file: e.target.files![0] })} />
       <div class='i-mdi-movie-open text-8xl block m-a movieFileIcon'></div>
       <div class='font-500 text-center'>
         Choose Video ...
