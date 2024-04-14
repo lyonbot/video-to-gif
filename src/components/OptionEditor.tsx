@@ -1,6 +1,9 @@
-import { createComputed, createMemo, createSignal } from "solid-js";
-import { outputSize, outputTimeRange, store, updateStore } from "../store";
+import { Show, Index, createMemo, createSignal } from "solid-js";
+import { WatermarkConfig, getDefaultWatermark, outputSize, outputTimeRange, store, updateStore, watermarkLocation, watermarkTextAlign } from "../store";
 import { startMouseMove } from 'yon-utils'
+import JSON5 from 'json5'
+
+const btnClass = "bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5";
 
 export function OptionEditor() {
   var videoEl: HTMLVideoElement
@@ -97,7 +100,7 @@ export function OptionEditor() {
   }
 
   function OptionLabel(props: { children: any }) {
-    return <label class="op-60 inline-block w-24 text-right mr-2">{props.children}</label>
+    return <label class="op-60 inline-block w-24 text-right mr-2 min-h-7">{props.children}</label>
   }
 
   return <div>
@@ -116,11 +119,11 @@ export function OptionEditor() {
       <div class="flex">
         <div style={{ "width": t2p(videoTime()), "flex-shrink": 1 }}></div>
         <div class="flex shrink-0 b-0 b-l-4 b-solid b-yellow ml--0.5">
-          <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'start', videoTime()) }}>
+          <button class={btnClass} onClick={() => { updateStore('options', 'start', videoTime()) }}>
             <i class="i-mdi-arrow-expand-right"></i> as start
           </button>
           <NumberInput precise={2} value={videoTime()} onChange={seekTo} />
-          <button class="bg-gray-7 b-0 text-gray-2 cursor-pointer hover:bg-gray-5" onClick={() => { updateStore('options', 'end', videoTime()) }}>
+          <button class={btnClass} onClick={() => { updateStore('options', 'end', videoTime()) }}>
             as end <i class="i-mdi-arrow-expand-left"></i>
           </button>
         </div>
@@ -194,6 +197,33 @@ export function OptionEditor() {
           </select>
         </div>
 
+        <div>
+          <OptionLabel>Watermark</OptionLabel>
+          <select
+            class="bg-gray-6 text-white b-0 p-2 py-1"
+            value={String(store.options.watermarkIndex)}
+            onChange={e => {
+              let value: any = e.currentTarget.value
+              if (value === '(add)') {
+                updateStore('watermarks', m => [...m, getDefaultWatermark()])
+                value = store.watermarks.length - 1
+              }
+              updateStore('options', 'watermarkIndex', parseInt(value))
+            }}
+          >
+            <option value="-1">none</option>
+            <Index each={store.watermarks}>
+              {(x, i) => <option value={String(i)}>{i}. {x().name}</option>}
+            </Index>
+
+            <option value="(add)">+ new watermark</option>
+          </select>
+
+          <Show when={store.options.watermarkIndex >= 0}>
+            <WatermarkEdit />
+          </Show>
+        </div>
+
       </div>
     </div>
   </div>
@@ -227,4 +257,69 @@ function NumberInput(props: {
       return props.onChange?.(val);
     }}
   />
+}
+
+function WatermarkEdit() {
+  const watermark = createMemo(() => store.watermarks[store.options.watermarkIndex])
+  const updateWatermark = (...args: [Partial<WatermarkConfig>]) => updateStore('watermarks', store.options.watermarkIndex, ...args)
+
+  return <>
+    <div class="inline-flex gap-2 ml-2 h-8 items-stretch">
+      <button class={btnClass} onClick={() => {
+        const idx = store.options.watermarkIndex
+        updateStore('watermarks', m => m.filter((_, i) => i !== idx))
+        if (idx >= store.watermarks.length) updateStore('options', 'watermarkIndex', store.watermarks.length - 1)
+      }}>
+        <i class="i-mdi-delete"></i> delete
+      </button>
+
+      <button class={btnClass} onClick={() => {
+        const idx = store.options.watermarkIndex
+        updateStore('watermarks', m => {
+          const m2 = m.slice()
+          m2.splice(idx, 0, { ...m2[idx] })
+          return m2
+        })
+        updateStore('options', 'watermarkIndex', idx + 1)
+      }}>
+        <i class="i-mdi-content-copy"></i> duplicate
+      </button>
+    </div>
+
+    <Show when={!!watermark()}>
+      <div class="ml-28 my-1 mr-2 text-sm flex flex-col gap-1">
+        <div class="flex">
+          <span class="op-60 w-12 text-right">Text: </span>
+          <input
+            class="bg-transparent text-white px-1 flex-1 hover:bg-gray-7"
+            value={watermark().text}
+            onChange={e => { updateWatermark({ text: e.currentTarget.value }) }}
+          />
+        </div>
+
+        <div class="flex">
+          <span class="op-60 w-12 text-right">Extra: </span>
+          <div class="relative flex-1">
+            <textarea
+              class="optionEditorWatermarkExtra"
+              spellcheck={false}
+              value={JSON5.stringify(watermark(), null, 2)}
+              onChange={e => {
+                try {
+                  updateWatermark({ ...JSON5.parse(e.currentTarget.value) })
+                } catch (err) {
+                  e.currentTarget.value = JSON5.stringify(watermark(), null, 2)
+                }
+              }}
+            />
+
+            <div class="optionEditorWatermarkExtraNotice">
+              <div><b>location</b>: {Object.values(watermarkLocation).join(', ')}</div>
+              <div><b>textAlign</b>: {Object.values(watermarkTextAlign).join(', ')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Show>
+  </>
 }

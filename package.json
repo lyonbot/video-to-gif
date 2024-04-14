@@ -15,6 +15,7 @@
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.66",
     "@types/canvas-confetti": "^1.6.4",
+    "@types/lodash-es": "^4.17.12",
     "solid-devtools": "^0.29.3",
     "typescript": "^5.4.5",
     "unocss": "^0.59.2",
@@ -25,6 +26,8 @@
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
     "canvas-confetti": "^1.9.2",
+    "json5": "^2.2.3",
+    "lodash-es": "^4.17.21",
     "modern-gif": "^2.0.3",
     "mp4box": "^0.5.2",
     "sass": "^1.75.0",

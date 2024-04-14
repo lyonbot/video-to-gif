@@ -13,6 +13,11 @@ select,
 textarea {
   font-size: inherit;
   font-family: inherit;
+  border: 0;
+  &:focus {
+    outline: 1px solid currentColor;
+    outline-offset: -1px;
+  }
 }
 
 .uploadAcceptArea {
@@ -26,7 +31,9 @@ textarea {
 
   &:hover {
     transition: 0.4s;
-    box-shadow: 0 0 0 5px #fff, 0 0 0 10px currentColor;
+    box-shadow:
+      0 0 0 5px #fff,
+      0 0 0 10px currentColor;
   }
 
   &:focus,
@@ -49,4 +56,39 @@ textarea {
 .stopButton {
   @apply block cursor-pointer mx-auto px-6 py-3;
   @apply bg-orange b-0 rounded-xl text-xl text-white;
+}
+
+.optionEditorWatermarkExtra {
+  @apply bg-transparent text-white px-1 w-full hover:bg-gray-7 transition-height-200 h-12 overflow-hidden resize-none font-mono op-60;
+  box-sizing: border-box;
+
+  &:focus {
+    @apply h-32 op-100;
+    overflow: auto;
+
+    ~ .optionEditorWatermarkExtraNotice {
+      display: block;
+    }
+  }
+}
+
+.optionEditorWatermarkExtraNotice {
+  display: none;
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  box-sizing: border-box;
+  @apply text-sm text-white z-1 bg-blue-7 p-4 py-2 shadow-xl rounded w-full;
+
+  &::after {
+    content: ' ';
+    position: absolute;
+    top: 100%;
+    left: 10px;
+    width: 0;
+    height: 0;
+    box-sizing: content-box;
+    border: 10px solid transparent;
+    @apply b-t-blue-7;
+  }
 }

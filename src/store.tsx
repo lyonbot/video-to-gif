@@ -1,7 +1,21 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
-import { createEffect, createMemo, createRoot } from 'solid-js';
+import { createEffect, createMemo, createRoot, on } from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { debounce } from 'lodash-es';
+
+export enum watermarkLocation {
+  top = 'top',
+  bottom = 'bottom',
+  above = 'above',
+  below = 'below',
+}
+
+export enum watermarkTextAlign {
+  left = 'left',
+  center = 'center',
+  right = 'right',
+}
 
 export const defaultOptions = {
   start: 0,
@@ -11,7 +25,24 @@ export const defaultOptions = {
   height: -1,
   framerate: 12,
   maxColors: 255,
+  watermarkIndex: -1,
 };
+
+const defaultWatermarks = [
+  {
+    name: 'Default Watermark',
+    location: watermarkLocation.bottom,
+    backgroundColor: '#000000',
+    height: 14,
+    font: '12px "Arial"',
+    text: 'lyonbot/video-to-gif',
+    textColor: '#cccccc',
+    textAlign: watermarkTextAlign.center,
+  }
+];
+
+export type WatermarkConfig = typeof defaultWatermarks[0];
+export const getDefaultWatermark = (): WatermarkConfig => ({ ...defaultWatermarks[0]! })
 
 export const [store, updateStore] = createStore({
   file: null as null | File,
@@ -26,6 +57,8 @@ export const [store, updateStore] = createStore({
 
   outputFileContent: null as null | FileData,
   outputFileURL: '',
+
+  watermarks: defaultWatermarks
 });
 
 export const outputSize = createRoot(() => {
@@ -110,4 +143,19 @@ createRoot(() => {
       URL.revokeObjectURL(url)
     }
   })
+
+  // watermark sync
+  const skWatermarks = 'vtg:watermarks'
+  const skWatermarkIndex = 'vtg:watermarkIndex'
+  updateStore('options', 'watermarkIndex', defaultOptions.watermarkIndex = +(localStorage.getItem(skWatermarkIndex) ?? -1))
+  createEffect(() => {
+    let idx = store.options.watermarkIndex
+    if (idx < -1) idx = -1
+    if (idx > store.watermarks.length - 1) idx = store.watermarks.length - 1
+
+    localStorage.setItem(skWatermarkIndex, idx.toString())
+    defaultOptions.watermarkIndex = idx
+  })
+  try { updateStore('watermarks', JSON.parse(localStorage.getItem(skWatermarks) ?? '?')) } catch { }
+  createEffect(on(() => JSON.stringify(store.watermarks), debounce(() => localStorage.setItem(skWatermarks, JSON.stringify(store.watermarks)), 1000, { trailing: true })))
 })

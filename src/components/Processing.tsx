@@ -2,8 +2,10 @@ import { Show, createMemo, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
 import { outputSize, outputTimeRange, store, updateStore } from "../store";
-import { grabFramesWithMP4Box } from "../convertor/frameGrabber";
+import { grabFramesWithMP4Box } from "../processors/frameGrabber";
 import { delay } from "yon-utils";
+import { unwrap } from "solid-js/store";
+import { getWatermarkRenderer } from "../processors/watermarkRenderer";
 
 export function ProcessingBar() {
   let [isRunning, setIsRunning] = createSignal(false)
@@ -52,7 +54,9 @@ export function ProcessingBar() {
   }
 
   async function processWithFFMpeg() {
-    const { ffmpeg, file, options } = store;
+    const { file, options } = store;
+    const ffmpeg = unwrap(store.ffmpeg);
+
     if (!ffmpeg) throw new Error('no ffmpeg')
     if (!file) throw new Error('no file')
 
@@ -158,12 +162,14 @@ export function ProcessingBar() {
 
     setProgress('Packing frames');
     setPercentage(-1);
-    await delay(0);
+    await delay(10);
 
-    const { width, height } = frames[0].bitmap;
-
-    const offCanvas = new OffscreenCanvas(width, height);
-    const ctx = offCanvas.getContext('2d', { willReadFrequently: true })!;
+    const watermarkRenderer = await getWatermarkRenderer({
+      watermark: store.watermarks[store.options.watermarkIndex],
+      sourceWidth: frames[0].bitmap.width,
+      sourceHeight: frames[0].bitmap.height,
+    })
+    const { oWidth: width, oHeight: height } = watermarkRenderer
 
     const frameDataSize = width * height * 4;
     const buffer = new ArrayBuffer(frameDataSize * frames.length);
@@ -171,9 +177,8 @@ export function ProcessingBar() {
 
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i];
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(frame.bitmap, 0, 0);
-      combined.set(ctx.getImageData(0, 0, width, height).data, i * frameDataSize);
+      const imageData = watermarkRenderer.getWatermarkedImageData(frame.bitmap)
+      combined.set(imageData.data, i * frameDataSize);
       frame.bitmap.close();
     }
 
