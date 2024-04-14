@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { store } from "../store";
 import confetti from 'canvas-confetti';
 
@@ -20,7 +20,10 @@ function playConfetti(el: HTMLElement) {
   })
 }
 
+
 export function OutputDisplay() {
+  const [showDonate, setShowDonate] = createSignal(false)
+
   return <Show when={store.outputFileURL}>
     <section
       class="bg-slate-2 rounded-xl p-4 mt-4 animate-zoom-in animate-duration-300 animate-ease-out"
@@ -39,5 +42,33 @@ export function OutputDisplay() {
       </p>
       <img src={store.outputFileURL} alt="output" class="block mx-auto max-w-full rounded-xl" />
     </section>
+
+    <div class="justify-center items-center mt-4 flex gap-2">
+      Feeling helpful?
+
+      <button class="rounded p-4 py-2 bg-emerald-6 text-white cursor-pointer"
+        onClick={() => { window.open('https://ko-fi.com/W7W0WWVJE', '_blank') }}
+        onMouseEnter={() => { setShowDonate(true) }}
+      >
+        <i class="i-mdi-coffee"></i> Buy me a Coffee
+      </button>
+
+      <button class="rounded p-4 py-2 bg-emerald-6 text-white cursor-pointer" onClick={() => {
+        const message = '🎬⇒🎆 Video to GIF, in local, blazing fast⚡\n\nhttps://lyonbot.github.io/video-to-gif/\n\nJust found a handy web-app that convert video to GIF, no installing, blazing fast! 🤩 Check it out!'
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`, 'tweetShare')
+      }}>
+        <i class="i-mdi-twitter"></i> Tell Friends
+      </button>
+    </div>
+
+    {/* only render when language is zh-CN and hover on Donate button */}
+    {(navigator.language === 'zh-CN') && <>
+      <Show when={showDonate()}>
+        <div class="mt-4 text-center">
+          <img src="https://yons.site/donate1.png" class="max-w-full" onload={e => e.currentTarget.scrollIntoView()} />
+        </div>
+      </Show>
+      <link rel="preload" as="image" href="https://yons.site/donate1.png" />
+    </>}
   </Show>
 }
