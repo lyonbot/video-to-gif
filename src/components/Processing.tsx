@@ -159,63 +159,55 @@ export function ProcessingBar() {
   }
 
   async function grabFramesAndCombine() {
-    const frames = await grabFrames()
-
-    setProgress('Packing frames');
-    setPercentage(-1);
-    await delay(10);
-
-    const watermarkRenderer = await getWatermarkRenderer({
-      watermark: store.watermarks[store.options.watermarkIndex],
-      sourceWidth: frames[0].bitmap.width,
-      sourceHeight: frames[0].bitmap.height,
-    })
-    const { oWidth: width, oHeight: height } = watermarkRenderer
-
-    const frameDataSize = width * height * 4;
-    const buffer = new ArrayBuffer(frameDataSize * frames.length);
-    const combined = new Uint8Array(buffer);
-
-    for (let i = 0; i < frames.length; i++) {
-      const frame = frames[i];
-      const imageData = watermarkRenderer.getWatermarkedImageData(frame.bitmap)
-      combined.set(imageData.data, i * frameDataSize);
-      frame.bitmap.close();
-    }
-
-    return { combined, width, height, frameCount: frames.length, frameDataSize };
-  }
-
-  async function grabFrames() {
-    const { sourceStart, sourceEnd, frameCount } = outputTimeRange()
+    const { sourceStart, sourceEnd, frameCount: estimatedFrameCount } = outputTimeRange()
     const { file } = store
     if (!file) throw new Error('no file')
+
+    setProgress('Allocating RAM')
+
+    const { width, height } = outputSize()
+    const frameDataSize = width * height * 4;
+    const buffer = new ArrayBuffer(frameDataSize * estimatedFrameCount);
+    const combined = new Uint8Array(buffer);
+    let frameCount = 0;
 
     setProgress('Grabbing Frames')
     setPercentage(0)
 
-    const frames = await grabFrames1({
-      file,
-      resizeWidth: outputSize().width,
-      resizeHeight: outputSize().height,
-      frameTimestamps: Array.from({ length: frameCount }, (_, i) => sourceStart + i * (sourceEnd - sourceStart) / frameCount),
-      reportProgress(grabbedCount, frame) {
-        setPercentage(grabbedCount / frameCount * 100)
-
-        // debugging
-        // const can = document.createElement('canvas')
-        // can.width = frame.bitmap.width
-        // can.height = frame.bitmap.height
-        // document.body.appendChild(can)
-        // const ctx = can.getContext('2d')!
-        // ctx.drawImage(frame.bitmap, 0, 0)
-
-        return isRunning()
-      },
+    const watermarkRenderer = await getWatermarkRenderer({
+      watermark: store.watermarks[store.options.watermarkIndex],
+      sourceWidth: width,
+      sourceHeight: height,
     })
 
-    if (!isRunning()) throw new Error('Progress aborted')
-    return frames
+    const progressSyncTimer = setInterval(() => { setPercentage(frameCount / estimatedFrameCount * 100) }, 150)
+    try {
+      await grabFrames1({
+        file,
+        resizeWidth: outputSize().width,
+        resizeHeight: outputSize().height,
+        frameTimestamps: Array.from({ length: estimatedFrameCount }, (_, i) => sourceStart + i * (sourceEnd - sourceStart) / estimatedFrameCount),
+        reportProgress(grabbedCount, frame) {
+          const imageData = watermarkRenderer.getWatermarkedImageData(frame.image)
+          combined.set(imageData.data, (grabbedCount - 1) * frameDataSize);
+          frameCount = grabbedCount
+
+          return isRunning()
+        },
+      })
+    } finally {
+      clearInterval(progressSyncTimer)
+    }
+
+    if (!isRunning()) throw new Error('Progress aborted');
+
+    return {
+      combined: combined.slice(0, frameCount * frameDataSize),
+      width,
+      height,
+      frameCount,
+      frameDataSize,
+    };
   }
 
   function startProcess() {

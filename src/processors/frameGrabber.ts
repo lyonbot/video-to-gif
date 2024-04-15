@@ -12,7 +12,7 @@ interface GrabFrameOptions {
 }
 
 interface GrabbedFrame {
-  bitmap: ImageBitmap;
+  image: CanvasImageSource;
   time: number;
 }
 
@@ -22,6 +22,12 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
   const outputFrames = [] as GrabbedFrame[]
   const finishedPromise = makePromise<void>()
   let stopped = false
+
+  const canvas = document.createElement('canvas')
+  canvas.width = resizeWidth
+  canvas.height = resizeHeight
+  const ctx = canvas.getContext('2d')!
+  let transform: DOMMatrix
 
   const MP4Box = await import('mp4box')
   const DataStream = MP4Box.DataStream;
@@ -50,8 +56,15 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
         outputFrames.length < frameTimestamps.length &&
         inputFrame.timestamp >= frameTimestamps[outputFrames.length] * 1e6
       ) {
-        const bitmap = await createImageBitmap(inputFrame, { resizeWidth, resizeHeight });
-        outputFrames.push({ bitmap, time: inputFrame.timestamp / 1e6 });
+        ctx.resetTransform()
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        ctx.setTransform(transform)
+        ctx.drawImage(inputFrame, 0, 0)
+
+        // FIXME: canvas will be invalidated soon
+        // this heavily depends on "reportProgress" to consume the frame
+        outputFrames.push({ image: canvas, time: inputFrame.timestamp / 1e6 });
 
         if (!reportProgress(outputFrames.length, outputFrames.at(-1)!)) {
           stopped = true;
@@ -90,6 +103,31 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
 
     if (!description) throw new Error('no video description')
 
+    // for mobile phone recording, content shall be rotated by "matrix"
+    if (track.matrix.slice(0, 6).join(',') !== '65536,0,0,0,65536,0') {
+      // video need to be rotated
+      // see https://www.w3resource.com/html5-canvas/html5-canvas-matrix-transforms.php
+      const [a, c, e, b, d, f] = Array.from(track.matrix.slice(0, 6), (x: number) => x / 65536) // Fixed-float number
+      const matrix = new DOMMatrix([a, b, c, d, e, f])
+
+      console.log('video transform matrix', [a, c, e, b, d, f])
+
+      const scaleX = resizeWidth / Math.abs(a * track.track_width + c * track.track_height)
+      const scaleY = resizeHeight / Math.abs(b * track.track_width + d * track.track_height)
+      // Note: transform order is reversed (translate first, then apply matrix, then scale, then translate back)
+      transform = new DOMMatrix()
+        .translate(resizeWidth / 2, resizeHeight / 2)
+        .scale(scaleX, scaleY)
+        .multiply(matrix.inverse())
+        .translate(-track.track_width / 2, -track.track_height / 2)
+    } else {
+      // just regular scaling
+      const scaleX = resizeWidth / track.track_width
+      const scaleY = resizeHeight / track.track_height
+      transform = new DOMMatrix([scaleX, 0, 0, scaleY, 0, 0])
+    }
+
+    // configure decoder
     decoder.configure({
       codec: track.codec,
       codedWidth: track.track_width,
@@ -162,7 +200,7 @@ export async function grabFramesWithVideoTag({ file, resizeWidth, resizeHeight, 
       await seekEnd
 
       outputFrames.push({
-        bitmap: await createImageBitmap(video, { resizeWidth, resizeHeight }),
+        image: await createImageBitmap(video, { resizeWidth, resizeHeight }),
         time: frameTime
       })
       if (!reportProgress(i + 1, outputFrames.at(-1)!)) break
