@@ -2,7 +2,7 @@ import { Show, createMemo, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
 import { outputSize, outputTimeRange, store, updateStore } from "../store";
-import { grabFramesWithMP4Box } from "../processors/frameGrabber";
+import { grabFrames as grabFrames1 } from "../processors/frameGrabber";
 import { delay } from "yon-utils";
 import { unwrap } from "solid-js/store";
 import { getWatermarkRenderer } from "../processors/watermarkRenderer";
@@ -193,7 +193,7 @@ export function ProcessingBar() {
     setProgress('Grabbing Frames')
     setPercentage(0)
 
-    const frames = await grabFramesWithMP4Box({
+    const frames = await grabFrames1({
       file,
       resizeWidth: outputSize().width,
       resizeHeight: outputSize().height,

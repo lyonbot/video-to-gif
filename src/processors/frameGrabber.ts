@@ -172,3 +172,14 @@ export async function grabFramesWithVideoTag({ file, resizeWidth, resizeHeight, 
     URL.revokeObjectURL(fileURL)
   }
 }
+
+export function grabFrames(options: GrabFrameOptions) {
+  return grabFramesWithMP4Box(options).catch(error => {
+    console.error('MP4Box grabFrames error', error)
+    if (confirm('MP4Box+WebCodec cannot decode this file. Try with video tag?')) {
+      return grabFramesWithVideoTag(options)
+    }
+
+    throw error
+  })
+}
