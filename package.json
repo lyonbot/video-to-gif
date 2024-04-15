@@ -25,6 +25,7 @@
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
+    "@sentry/browser": "^7.110.0",
     "canvas-confetti": "^1.9.2",
     "json5": "^2.2.3",
     "lodash-es": "^4.17.21",

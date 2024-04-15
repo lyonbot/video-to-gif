@@ -6,6 +6,7 @@ import { grabFrames as grabFrames1 } from "../processors/frameGrabber";
 import { delay } from "yon-utils";
 import { unwrap } from "solid-js/store";
 import { getWatermarkRenderer } from "../processors/watermarkRenderer";
+import { reportError } from "../report";
 
 export function ProcessingBar() {
   let [isRunning, setIsRunning] = createSignal(false)
@@ -224,7 +225,7 @@ export function ProcessingBar() {
 
     const run = isUseFFMpeg() ? processWithFFMpeg : processWithGIFjs;
     run().catch(error => {
-      console.error(error)
+      reportError('convert error', error)
       setErrorMessage(String(error))
     }).then(() => {
       console.timeEnd('process')

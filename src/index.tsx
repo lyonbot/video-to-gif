@@ -5,6 +5,7 @@ import 'virtual:uno.css'
 import './index.scss';
 import App from './App';
 import { initFFmpeg } from './ffmpeg';
+import { setupSentry } from './report';
 
 const root = document.getElementById('root');
 
@@ -15,4 +16,5 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 }
 
 initFFmpeg()
+setupSentry()
 render(() => <App />, root!);

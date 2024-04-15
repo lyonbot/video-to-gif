@@ -1,5 +1,6 @@
 import { MP4ArrayBuffer } from 'mp4box';
 import { makePromise } from 'yon-utils';
+import { reportError } from '../report';
 
 interface GrabFrameOptions {
   file: File;
@@ -27,7 +28,7 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
   const mp4boxInputFile = MP4Box.createFile();
 
   mp4boxInputFile.onError = error => {
-    console.error('MP4Box Error', error)
+    reportError('MP4Box Error', error)
     finishedPromise.reject(error)
   };
 
@@ -65,7 +66,7 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
       inputFrame.close();
     },
     error(error) {
-      console.error('Decoder Error', error);
+      reportError('Decoder Error', error);
       finishedPromise.reject(error)
     },
   });
@@ -173,13 +174,16 @@ export async function grabFramesWithVideoTag({ file, resizeWidth, resizeHeight, 
   }
 }
 
-export function grabFrames(options: GrabFrameOptions) {
-  return grabFramesWithMP4Box(options).catch(error => {
-    console.error('MP4Box grabFrames error', error)
+export async function grabFrames(options: GrabFrameOptions) {
+  try {
+    return await grabFramesWithMP4Box(options);
+  } catch (error) {
+    reportError('MP4Box grabFrames error', error);
+
     if (confirm('MP4Box+WebCodec cannot decode this file. Try with video tag?')) {
-      return grabFramesWithVideoTag(options)
+      return await grabFramesWithVideoTag(options);
     }
 
-    throw error
-  })
+    throw error;
+  }
 }
