@@ -135,7 +135,7 @@ export function ProcessingBar() {
     const stage2Out = await ffmpeg.exec([
       ...stage1DecodeArgs,
       '-i', stage1Filename,
-      '-vf', `split[a][b];[a]palettegen=max_colors=${options.maxColors}[pal];[b][pal]paletteuse=dither=${options.ditcher}`,
+      '-vf', `split[a][b];[a]palettegen=max_colors=${options.maxColors}[pal];[b][pal]paletteuse=dither=${options.dither}`,
       '-y', outputFilename
     ])
     console.log('stage2 exit code = ' + stage2Out)
