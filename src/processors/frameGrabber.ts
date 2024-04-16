@@ -143,11 +143,12 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
     while (i < samples.length && ((samples[i].cts + samples[i].duration) * 1e6 / samples[i].timescale < startTS)) i++;
     while (i > 0 && !samples[i].is_sync) i--;
 
+    let waitingForEndKeyFrame = false;
+
     for (; i < samples.length; i++) {
       const sample = samples[i];
       const timestamp = sample.cts * 1000000 / sample.timescale;
 
-      if (timestamp > endTS) break;
       if (stopped) break;
 
       decoder.decode(new EncodedVideoChunk({
@@ -156,6 +157,9 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
         duration: sample.duration * 1_000_000 / sample.timescale,
         data: sample.data
       }));
+
+      if (timestamp > endTS) waitingForEndKeyFrame = true;
+      if (waitingForEndKeyFrame && sample.is_sync) break;
     }
 
     await decoder.flush();
