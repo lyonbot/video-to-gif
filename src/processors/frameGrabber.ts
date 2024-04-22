@@ -4,7 +4,10 @@ import { reportError } from '../report';
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 
 interface GrabFrameOptions {
-  file: File;
+  fileContent: Uint8Array;
+  fileURL: string;
+  fileExtname: string;
+
   resizeWidth: number;
   resizeHeight: number;
   frameTimestamps: number[]; // in sec
@@ -18,7 +21,7 @@ interface GrabbedFrame {
   time: number;
 }
 
-export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, frameTimestamps, reportProgress }: GrabFrameOptions) {
+export async function grabFramesWithMP4Box({ fileContent, resizeWidth, resizeHeight, frameTimestamps, reportProgress }: GrabFrameOptions) {
   const startTS = frameTimestamps[0] * 1000000
   const endTS = frameTimestamps[frameTimestamps.length - 1] * 1000000
   const outputFrames = [] as GrabbedFrame[]
@@ -42,11 +45,10 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
 
   const mp4InfoPromise = new Promise<any>((resolve, reject) => {
     mp4boxInputFile.onReady = resolve
-    file.arrayBuffer().then((b) => {
-      const buffer = b as MP4ArrayBuffer
-      buffer.fileStart = 0
-      mp4boxInputFile.appendBuffer(buffer)
-    }).catch(reject)
+
+    const buffer = fileContent.buffer.slice(0) as MP4ArrayBuffer
+    buffer.fileStart = 0
+    mp4boxInputFile.appendBuffer(buffer)
   });
 
   // reference: https://github.com/vjeux/mp4-h264-re-encode/tree/main
@@ -180,49 +182,44 @@ export async function grabFramesWithMP4Box({ file, resizeWidth, resizeHeight, fr
   return outputFrames
 }
 
-export async function grabFramesWithVideoTag({ file, resizeWidth, resizeHeight, frameTimestamps, reportProgress }: GrabFrameOptions) {
-  const fileURL = URL.createObjectURL(file)
+export async function grabFramesWithVideoTag({ fileURL, resizeWidth, resizeHeight, frameTimestamps, reportProgress }: GrabFrameOptions) {
   const start = frameTimestamps[0]
   const outputFrames = [] as GrabbedFrame[]
 
-  try {
-    const video = document.createElement('video')
-    const videoReady = new Promise(r => video.onloadedmetadata = r)
-    video.muted = true
-    video.src = fileURL
+  const video = document.createElement('video')
+  const videoReady = new Promise(r => video.onloadedmetadata = r)
+  video.muted = true
+  video.src = fileURL
 
-    await videoReady
-    const videoPlaying = new Promise(r => video.onplaying = r)
-    video.currentTime = start
-    video.play()
-    await videoPlaying
-    video.pause()
-    video.currentTime = start
-    video.onplaying = null
+  await videoReady
+  const videoPlaying = new Promise(r => video.onplaying = r)
+  video.currentTime = start
+  video.play()
+  await videoPlaying
+  video.pause()
+  video.currentTime = start
+  video.onplaying = null
 
-    // grab frames
+  // grab frames
 
-    const waitForFrameReady = () => new Promise(r => video.onseeked = r)
-    for (let i = 0; i < frameTimestamps.length; i++) {
-      const frameTime = frameTimestamps[i]
-      const seekEnd = waitForFrameReady()
-      video.currentTime = frameTime
-      await seekEnd
+  const waitForFrameReady = () => new Promise(r => video.onseeked = r)
+  for (let i = 0; i < frameTimestamps.length; i++) {
+    const frameTime = frameTimestamps[i]
+    const seekEnd = waitForFrameReady()
+    video.currentTime = frameTime
+    await seekEnd
 
-      outputFrames.push({
-        image: await createImageBitmap(video, { resizeWidth, resizeHeight }),
-        time: frameTime
-      })
-      if (!reportProgress(i + 1, outputFrames.at(-1)!)) break
-    }
-
-    return outputFrames
-  } finally {
-    URL.revokeObjectURL(fileURL)
+    outputFrames.push({
+      image: await createImageBitmap(video, { resizeWidth, resizeHeight }),
+      time: frameTime
+    })
+    if (!reportProgress(i + 1, outputFrames.at(-1)!)) break
   }
+
+  return outputFrames
 }
 
-export async function grabFramesWithFFMpeg({ file, resizeWidth, resizeHeight, frameTimestamps, reportProgress, ffmpeg }: GrabFrameOptions) {
+export async function grabFramesWithFFMpeg({ fileContent, fileExtname, resizeWidth, resizeHeight, frameTimestamps, reportProgress, ffmpeg }: GrabFrameOptions) {
   if (!ffmpeg) throw new Error('FFMpeg not loaded');
 
   const start = frameTimestamps[0]
@@ -231,8 +228,8 @@ export async function grabFramesWithFFMpeg({ file, resizeWidth, resizeHeight, fr
 
   // const mountPoint = "/mounted/"
   // await ffmpeg.mount('WORKERFS' as any, { files: [file] }, mountPoint) // see https://emscripten.org/docs/api_reference/Filesystem-API.html#workerfs
-  const inputFileName = 'input__' + file.name
-  await ffmpeg.writeFile(inputFileName, new Uint8Array(await file.arrayBuffer()))
+  const inputFileName = `input1.${fileExtname}`
+  await ffmpeg.writeFile(inputFileName, fileContent.slice())
 
   const abortController = new AbortController()
   let aborted = false

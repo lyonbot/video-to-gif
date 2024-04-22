@@ -159,8 +159,8 @@ export function ProcessingBar() {
 
   async function grabFramesAndCombine() {
     const { sourceStart, sourceEnd, frameCount: estimatedFrameCount } = outputTimeRange()
-    const { file } = store
-    if (!file) throw new Error('no file')
+    const { file, fileContent } = store
+    if (!file || !fileContent) throw new Error('no file')
 
     setProgress('Allocating RAM')
 
@@ -181,8 +181,12 @@ export function ProcessingBar() {
 
     const progressSyncTimer = setInterval(() => { setPercentage(frameCount / estimatedFrameCount * 100) }, 150)
     try {
+
       await grabFrames1({
-        file,
+        fileContent,
+        fileExtname: store.fileInfo.extname,
+        fileURL: store.fileInfo.url,
+
         resizeWidth: outputSize().width,
         resizeHeight: outputSize().height,
         frameTimestamps: Array.from({ length: estimatedFrameCount }, (_, i) => sourceStart + i * (sourceEnd - sourceStart) / estimatedFrameCount),
@@ -211,6 +215,11 @@ export function ProcessingBar() {
   }
 
   function startProcess() {
+    if (outputSize().width <= 0 || outputSize().height <= 0) {
+      alert('Invalid output size');
+      return;
+    }
+
     setIsRunning(true)
     setErrorMessage('')
     console.time('process')
@@ -270,8 +279,8 @@ export function ProcessingBar() {
       fix={() => updateStore('options', 'height', 600)}
     />
     <WarningMsg
-      when={outputTimeRange().frameCount > 200}
-      message="too many frames yield large GIF. please trim the video, or lowing framerate."
+      when={outputTimeRange().frameCount > 250}
+      message={`frame count ${outputTimeRange().frameCount} can be decreased with framerate, trimming and speed-up`}
     />
 
     <Show when={errorMessage()}>

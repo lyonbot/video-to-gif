@@ -54,7 +54,10 @@ export const getDefaultWatermark = (): WatermarkConfig => ({ ...defaultWatermark
 
 export const [store, updateStore] = createStore({
   file: null as null | File,
+  fileContent: null as null | Uint8Array,
   fileInfo: {
+    name: '',
+    extname: '', // without dot
     url: '',
     width: 0,
     height: 0,
@@ -107,14 +110,24 @@ export const outputTimeRange = createRoot(() => {
 
 createRoot(() => {
   createEffect(() => {
-    updateStore('fileInfo', { url: '' })
-
     const file = store.file;
     if (!file) return
+
+    updateStore('fileInfo', {
+      name: file.name,
+      extname: file.name.split('.').pop() ?? '',
+    })
+
+    file.arrayBuffer().then(data => {
+      if (file !== store.file) return
+      updateStore('fileContent', new Uint8Array(data))
+    })
 
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
     video.onloadedmetadata = () => {
+      if (file !== store.file) return;
+
       updateStore('fileInfo', {
         url,
         width: video.videoWidth,
@@ -126,7 +139,11 @@ createRoot(() => {
     video.src = url;
     video.muted = true;
 
-    onCleanup(() => { URL.revokeObjectURL(url) })
+    onCleanup(() => {
+      URL.revokeObjectURL(url)
+      updateStore('fileInfo', { url: '' });
+      updateStore('fileContent', null);
+    })
   })
 
   createEffect(() => {
