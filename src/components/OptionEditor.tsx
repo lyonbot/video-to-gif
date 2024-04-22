@@ -1,4 +1,4 @@
-import { Show, Index, createMemo, createSignal } from "solid-js";
+import { Show, Index, createMemo, createSignal, createEffect } from "solid-js";
 import { WatermarkConfig, ditherOptions, getDefaultWatermark, outputSize, outputTimeRange, store, updateStore, watermarkLocation, watermarkTextAlign } from "../store";
 import { startMouseMove } from 'yon-utils'
 import JSON5 from 'json5'
@@ -13,7 +13,8 @@ export function OptionEditor() {
   function seekTo(t: number) {
     setVideoTime(t);
     videoEl.pause();
-    videoEl.currentTime = t
+    videoEl.currentTime = t;
+    setPreviewingSpeed(false);
   }
 
   var timelineEl: HTMLDivElement
@@ -103,14 +104,41 @@ export function OptionEditor() {
     return <label class="op-60 inline-block w-24 text-right mr-2 min-h-7">{props.children}</label>
   }
 
+  const [previewingSpeed, setPreviewingSpeed] = createSignal(false)
+  createEffect(() => {
+    if (!previewingSpeed()) return;
+
+    // auto looping playback
+    videoEl.playbackRate = store.options.speed
+    videoEl.currentTime = store.options.start
+    videoEl.play()
+
+    createEffect(() => {
+      if (videoTime() >= store.options.end) {
+        videoEl.currentTime = store.options.start
+        videoEl.play()
+      }
+    })
+  })
+
   return <div>
 
     <div class="mx-auto max-w-4xl relative flex flex-col bg-gray-8 text-white rounded-xl overflow-hidden">
-      <video ref={x => (videoEl = x)} src={store.fileInfo.url} class="w-full h-64 outline-0" controls ontimeupdate={x => setVideoTime(x.currentTarget.currentTime)} />
+      <video
+        ref={x => (videoEl = x)}
+        src={store.fileInfo.url}
+        class="w-full h-64 outline-0 rounded-t-xl"
+        classList={{'outline-2 outline-solid outline-yellow outline-offset--2': previewingSpeed()}}
+        controls
+        onfocus={() => setPreviewingSpeed(false)}
+        ontimeupdate={x => setVideoTime(x.currentTarget.currentTime)}
+      />
       <div
         class="flex h-4 relative overflow-hidden outline-0 bg-gray-9 b-0 b-solid b-b-5 b-black"
         ref={e => (timelineEl = e)}
-        onPointerDown={handleSeekingOnBar} tabindex={-1} onKeyDown={handleKeypressOnBar}
+        tabindex={-1}
+        onPointerDown={handleSeekingOnBar}
+        onKeyDown={handleKeypressOnBar}
       >
         <TimelineThumb class="bg-yellow" time={videoTime()} onUpdate={seekTo} />
         <TimelineThumb class="bg-green" time={store.options.start} onUpdate={t => { seekTo(t), updateStore('options', 'start', t) }} />
@@ -143,7 +171,11 @@ export function OptionEditor() {
 
         <div>
           <OptionLabel> <i class="i-mdi-play-speed"></i> Speed</OptionLabel>
-          <NumberInput defaults={1} precise={2} step={0.25} value={store.options.speed} onChange={t => { updateStore('options', 'speed', t); videoEl.playbackRate = t }} min={0} max={10} />x
+          <NumberInput
+            defaults={1} precise={2} step={0.25} min={0} max={10}
+            value={store.options.speed}
+            onChange={t => { updateStore('options', 'speed', t); setPreviewingSpeed(true) }}
+          />
         </div>
 
         <div>
