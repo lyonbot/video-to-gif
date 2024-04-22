@@ -1,5 +1,5 @@
 import { MP4ArrayBuffer } from 'mp4box';
-import { makePromise, noop } from 'yon-utils';
+import { debouncePromise, makePromise, noop } from 'yon-utils';
 import { reportError } from '../report';
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 
@@ -224,7 +224,7 @@ export async function grabFramesWithFFMpeg({ fileContent, fileExtname, resizeWid
 
   const start = frameTimestamps[0]
   const end = frameTimestamps[frameTimestamps.length - 1]
-  const fps = frameTimestamps.length / (end - start) // TODO: rewrite this with ffmpeg "select" filter
+  const frameDuration = (end - start) / frameTimestamps.length
 
   // const mountPoint = "/mounted/"
   // await ffmpeg.mount('WORKERFS' as any, { files: [file] }, mountPoint) // see https://emscripten.org/docs/api_reference/Filesystem-API.html#workerfs
@@ -241,42 +241,45 @@ export async function grabFramesWithFFMpeg({ fileContent, fileExtname, resizeWid
   tempCanvas.height = resizeHeight
   const tempCtx = tempCanvas.getContext('2d')!
 
-  const poll = async () => {
+  const frameDataSize = resizeWidth * resizeHeight * 4
+  const poll = debouncePromise(async () => {
     while (!aborted) {
       const frameFilename = `out${outputFrames.length + 1}.rgba`;
       const data = await ffmpeg.readFile(frameFilename).catch(noop)
-      if (!data?.length) break;
+      if (data?.length !== frameDataSize) break;
 
       tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height)
       tempCtx.putImageData(new ImageData(new Uint8ClampedArray(data.slice() as Uint8Array), resizeWidth, resizeHeight), 0, 0)
-      await ffmpeg.deleteFile(`out${outputFrames.length}.rgba`).catch(noop)
+      setTimeout(() => ffmpeg.deleteFile(frameFilename).catch(e => { console.error('cannot delete', frameFilename, e) }), 100)
       outputFrames.push({
         image: tempCanvas,
         time: frameTimestamps[outputFrames.length]
       })
 
-      aborted = reportProgress(outputFrames.length, outputFrames.at(-1)!)
+      aborted = !reportProgress(outputFrames.length, outputFrames.at(-1)!)
       if (aborted) abortController.abort()
     }
-  }
+  })
 
   try {
     const vf: string[] = [
-      'scale=' + resizeWidth + ':' + resizeHeight
+      `select='isnan(prev_selected_t)*gte(t\\,${start})+gte(t-prev_selected_t\\,${frameDuration})'`,
+      `scale=${resizeWidth}:${resizeHeight}`
     ]
 
     ffmpeg.on('progress', poll)
     await ffmpeg.exec([
       '-i', inputFileName, //mountPoint + file.name,
       '-ss', String(start),
-      '-r', String(fps),
+      '-to', String(end + 0.5),
       '-vframes', String(frameTimestamps.length),
-      ...vf.length ? ['-vf', vf.join(',')] : [],
+      '-vf', vf.join(','),
       '-c:v', 'rawvideo',
       '-pix_fmt', 'rgba',
       '-f', 'image2',
       'out%d.rgba'
     ], undefined, { signal: abortController.signal })
+    await poll()
     await poll()
     await ffmpeg.deleteFile(`out${outputFrames.length}.rgba`).catch(noop)
 
@@ -295,8 +298,8 @@ export async function grabFrames(options: GrabFrameOptions) {
     grabFramesWithMP4Box(options)
       .catch(err => {
         reportError('grabFramesWithMP4Box error', err);
-        if (confirm('MP4Box+WebCodec cannot decode this file. Try with video tag?')) return grabFramesWithVideoTag(options);
-        else error = err;
+        /*if (confirm('MP4Box+WebCodec cannot decode this file. Try with video tag?'))*/ return grabFramesWithVideoTag(options);
+        // else error = err;
       })
       .catch(err => {
         reportError('grabFramesWithVideoTag error', err);

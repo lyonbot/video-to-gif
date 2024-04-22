@@ -3,6 +3,7 @@ import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
 import { createEffect, createMemo, createRoot, on, onCleanup } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { debounce } from 'lodash-es';
+import { readVideoFileInfo } from './processors/readFileInfo';
 
 export enum watermarkLocation {
   top = 'top',
@@ -118,26 +119,22 @@ createRoot(() => {
       extname: file.name.split('.').pop() ?? '',
     })
 
-    file.arrayBuffer().then(data => {
-      if (file !== store.file) return
-      updateStore('fileContent', new Uint8Array(data))
-    })
-
     const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.onloadedmetadata = () => {
-      if (file !== store.file) return;
+    updateStore('fileInfo', { url })
 
-      updateStore('fileInfo', {
-        url,
-        width: video.videoWidth,
-        height: video.videoHeight,
-        duration: video.duration,
+    file.arrayBuffer()
+      .then(data => {
+        if (file !== store.file) return
+
+        const fileContent = new Uint8Array(data);
+        updateStore('fileContent', fileContent)
+        return readVideoFileInfo({ fileContent, fileURL: url })
       })
-      updateStore('options', { ...defaultOptions, end: video.duration })
-    }
-    video.src = url;
-    video.muted = true;
+      .then(videoInfo => {
+        if (!videoInfo || file !== store.file) return
+        updateStore('fileInfo', videoInfo)
+        updateStore('options', { ...defaultOptions, end: videoInfo.duration })
+      })
 
     onCleanup(() => {
       URL.revokeObjectURL(url)
