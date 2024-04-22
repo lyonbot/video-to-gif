@@ -1,4 +1,4 @@
-import { Show, createSignal } from "solid-js";
+import { Show, createEffect, createRoot, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
 import { outputSize, outputTimeRange, store, updateStore } from "../store";
@@ -113,6 +113,16 @@ export function ProcessingBar() {
     // use WebCodec to decode file, which is much faster!
     const stage1Filename = 'medium.raw'
     const stage1DecodeArgs: string[] = []
+    const abortSignal = createRoot((dispose) => {
+      const controller = new AbortController()
+      createEffect(() => {
+        if (!isRunning()) {
+          controller.abort()
+          dispose()
+        }
+      })
+      return controller.signal
+    })
     {
       const { width, height, frameCount, combined } = await grabFramesAndCombine()
 
@@ -136,7 +146,7 @@ export function ProcessingBar() {
       '-i', stage1Filename,
       '-vf', `split[a][b];[a]palettegen=max_colors=${options.maxColors}[pal];[b][pal]paletteuse=dither=${options.dither}`,
       '-y', outputFilename
-    ])
+    ], undefined, { signal: abortSignal })
     console.log('stage2 exit code = ' + stage2Out)
 
     // const argsRaw = [
