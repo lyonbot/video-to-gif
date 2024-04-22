@@ -1,9 +1,8 @@
-import { Show, createMemo, createSignal } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
 import { outputSize, outputTimeRange, store, updateStore } from "../store";
 import { grabFrames as grabFrames1 } from "../processors/frameGrabber";
-import { delay } from "yon-utils";
 import { unwrap } from "solid-js/store";
 import { getWatermarkRenderer } from "../processors/watermarkRenderer";
 import { reportError } from "../report";
@@ -194,6 +193,7 @@ export function ProcessingBar() {
 
           return isRunning()
         },
+        ffmpeg: unwrap(store.ffmpeg),
       })
     } finally {
       clearInterval(progressSyncTimer)
