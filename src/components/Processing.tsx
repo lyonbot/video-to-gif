@@ -1,4 +1,4 @@
-import { Show, createEffect, createRoot, createSignal } from "solid-js";
+import { Show, createEffect, createMemo, createRoot, createSignal } from "solid-js";
 import { encode as GIFEncode } from 'modern-gif'
 import GIFWorkerJS from 'modern-gif/worker?url'
 import { outputSize, outputTimeRange, store, updateStore } from "../store";
@@ -12,6 +12,13 @@ export function ProcessingBar() {
   let [progress, setProgress] = createSignal('');
   let [percentage, setPercentage] = createSignal(0);
   let [errorMessage, setErrorMessage] = createSignal('');
+
+  const errorHint = createMemo(() => {
+    const msg = errorMessage()
+    if (!msg) return null
+
+    if (/allocation failed/.test(msg)) return "Please reduce the width / height / framerate / duration, and try again"
+  })
 
   let [isUseFFMpeg, setIsUseFFMpeg] = createSignal(true);
 
@@ -230,7 +237,8 @@ export function ProcessingBar() {
       return;
     }
 
-    setIsRunning(true)
+    setIsRunning(true);
+    (document.querySelector('video.optionEditor-video') as HTMLVideoElement)?.pause()
     setErrorMessage('')
     console.time('process')
 
@@ -297,6 +305,12 @@ export function ProcessingBar() {
       <div class="text-center my-4 text-red-7">
         <i class="i-mdi-alert-circle"></i> {errorMessage()}
       </div>
+
+      <Show when={errorHint()}>
+        <div class="text-center my-4 mt--2 text-orange">
+          {errorHint()}
+        </div>
+      </Show>
     </Show>
 
     <Show when={isRunning()}>

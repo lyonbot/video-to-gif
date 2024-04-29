@@ -3,3 +3,5 @@ declare class ImageCapture {
   track: MediaStreamTrack
   grabFrame(): Promise<ImageBitmap>
 }
+
+declare const GIT_REVISION: string;

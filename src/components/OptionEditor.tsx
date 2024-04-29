@@ -127,9 +127,9 @@ export function OptionEditor() {
       <video
         ref={x => (videoEl = x)}
         src={store.fileInfo.url}
-        class="w-full h-64 outline-0 rounded-t-xl"
+        class="optionEditor-video w-full h-64 outline-0 rounded-t-xl"
         classList={{'outline-2 outline-solid outline-yellow outline-offset--2': previewingSpeed()}}
-        controls
+        controls muted
         onfocus={() => setPreviewingSpeed(false)}
         ontimeupdate={x => setVideoTime(x.currentTarget.currentTime)}
       />

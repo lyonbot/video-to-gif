@@ -1,7 +1,11 @@
+import childProcess from 'node:child_process';
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 import devtools from 'solid-devtools/vite';
 import UnoCSS from 'unocss/vite';
+
+let GIT_REVISION = 'unknown'
+try { GIT_REVISION = childProcess.execSync("git rev-parse HEAD").toString().trim() } catch { }
 
 export default defineConfig({
   plugins: [
@@ -20,4 +24,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
+  define: {
+    GIT_REVISION: JSON.stringify(GIT_REVISION)
+  }
 });

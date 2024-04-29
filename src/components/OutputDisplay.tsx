@@ -1,4 +1,4 @@
-import { Show, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 import { store } from "../store";
 import confetti from 'canvas-confetti';
 
@@ -23,13 +23,43 @@ function playConfetti(el: HTMLElement) {
 
 export function OutputDisplay() {
   const [showDonate, setShowDonate] = createSignal(false)
+  const hasError = createMemo(() => isNaN(store.outputFileContent?.length || 0))
 
   return <Show when={store.outputFileURL}>
     <section
-      class="bg-slate-2 rounded-xl p-4 mt-4 animate-zoom-in animate-duration-300 animate-ease-out"
+      class="rounded-xl p-4 mt-4 animate-zoom-in animate-duration-300 animate-ease-out"
+      classList={{ 'bg-gray-1': hasError(), 'bg-slate-2': !hasError() }}
       ref={e => setTimeout(() => playConfetti(e!), 50)}
     >
       <h2>Output</h2>
+
+      <Show when={hasError()}>
+        <div class="bg-white p-4 rounded-xl mb-4">
+          <div class="">
+            <i class="i-mdi-emoticon-sad-outline text-xl mr-2" />
+            Am I messed it up?
+
+            <button class="rounded ml-4 p-4 py-2 bg-blue-6 text-white cursor-pointer" onClick={() => {
+              const title = `Failed to convert: ${store.fileInfo.extname}`
+              const body = [
+                '<!-- if possible, please provide the video file 🫴🎬 to analyze and solve bug🔬. -->',
+                '<!-- (sample files are public, please consider carefully) -->',
+                '',
+                `- File: ${store.fileInfo.extname}  (${readableFileSize(store.fileContent?.byteLength || 0)})` ,
+                `- User-Agent: ${navigator.userAgent}`,
+                `- File Info: \`${JSON.stringify(store.fileInfo)}\``,
+                `- Options: \`${JSON.stringify(store.options)}\``,
+                `- Git Revision: ${GIT_REVISION}`,
+                `- Source: ${location.href}`,
+              ].join('\n')
+              window.open(`https://github.com/lyonbot/video-to-gif/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`, 'tweetShare')
+            }}>
+              <i class="i-mdi-flag"></i> Report an Issue
+            </button>
+          </div>
+        </div>
+      </Show>
+
       <p>File size: {readableFileSize(store.outputFileContent?.length || 0)}</p>
       <p>
         <a
