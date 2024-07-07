@@ -11,7 +11,7 @@
     "build": "vite build",
     "serve": "vite preview"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.66",
     "@types/canvas-confetti": "^1.6.4",
@@ -21,7 +21,8 @@
     "typescript": "^5.4.5",
     "unocss": "^0.59.2",
     "vite": "^5.2.8",
-    "vite-plugin-solid": "^2.10.2"
+    "vite-plugin-solid": "^2.10.2",
+    "vite-plugin-static-copy": "^1.0.6"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",

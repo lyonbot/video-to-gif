@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 import devtools from 'solid-devtools/vite';
 import UnoCSS from 'unocss/vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 let GIT_REVISION = 'unknown'
 try { GIT_REVISION = childProcess.execSync("git rev-parse HEAD").toString().trim() } catch { }
@@ -16,6 +17,9 @@ export default defineConfig({
     */
     devtools(),
     solidPlugin(),
+    viteStaticCopy({
+      targets: [{ src: './LICENSE', dest: './' }]
+    })
   ],
   server: {
     port: 3000,
