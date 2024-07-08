@@ -18,7 +18,12 @@ export default defineConfig({
     devtools(),
     solidPlugin(),
     viteStaticCopy({
-      targets: [{ src: './LICENSE', dest: './' }]
+      targets: [
+        { src: './LICENSE', dest: './' },
+
+        { src: './node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js', dest: './assets' },
+        { src: './node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm', dest: './assets' },
+      ]
     })
   ],
   server: {
