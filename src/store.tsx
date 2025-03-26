@@ -2,7 +2,7 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
 import { createEffect, createMemo, createRoot, on, onCleanup } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { debounce } from 'lodash-es';
+import { debounce, pick } from 'lodash-es';
 import { readVideoFileInfo } from './processors/readFileInfo';
 
 export enum watermarkLocation {
@@ -36,6 +36,8 @@ export const defaultOptions = {
   dither: 'sierra2_4a',
   watermarkIndex: -1,
 };
+
+const storedOptionKeys: (keyof typeof defaultOptions)[] = ['watermarkIndex', 'maxColors', 'dither']
 
 const defaultWatermarks = [
   {
@@ -162,18 +164,50 @@ createRoot(() => {
     onCleanup(() => { URL.revokeObjectURL(url) })
   })
 
+  // options sync
+  const skOptions = 'vtg:options'
+  const debouncedWriteOptions = createDebouncedWrite(skOptions)
+
+  try {
+    const read = JSON.parse(localStorage.getItem(skOptions)!)
+    const picked = pick(read, storedOptionKeys)
+    Object.assign(defaultOptions, picked)
+    updateStore('options', picked)
+  } catch { }
+
+  createEffect(on(
+    () => JSON.stringify(pick(store.options, storedOptionKeys)),
+    (str) => {
+      debouncedWriteOptions(str)
+      Object.assign(defaultOptions, JSON.parse(str))
+    }
+  ))
+
   // watermark sync
   const skWatermarks = 'vtg:watermarks'
-  const skWatermarkIndex = 'vtg:watermarkIndex'
-  updateStore('options', 'watermarkIndex', defaultOptions.watermarkIndex = +(localStorage.getItem(skWatermarkIndex) ?? -1))
+  const debouncedWriteWatermarks = createDebouncedWrite(skWatermarks)
   createEffect(() => {
     let idx = store.options.watermarkIndex
     if (idx < -1) idx = -1
     if (idx > store.watermarks.length - 1) idx = store.watermarks.length - 1
 
-    localStorage.setItem(skWatermarkIndex, idx.toString())
     defaultOptions.watermarkIndex = idx
+    if (idx !== store.options.watermarkIndex) updateStore('options', 'watermarkIndex', idx) // fix out-ranged index
   })
-  try { updateStore('watermarks', JSON.parse(localStorage.getItem(skWatermarks) ?? '?')) } catch { }
-  createEffect(on(() => JSON.stringify(store.watermarks), debounce(() => localStorage.setItem(skWatermarks, JSON.stringify(store.watermarks)), 1000, { trailing: true })))
+  try { updateStore('watermarks', JSON.parse(localStorage.getItem(skWatermarks)!)) } catch { }
+  createEffect(on(() => JSON.stringify(store.watermarks), debouncedWriteWatermarks))
 })
+
+function createDebouncedWrite(key: string): (value: string) => void {
+  let lastValue: string | null = null
+  const debouncedWrite = debounce(() => {
+    if (lastValue === null) return
+    localStorage.setItem(key, lastValue)
+    lastValue = null
+  }, 1000, { trailing: true })
+
+  return (value: string) => {
+    lastValue = value
+    debouncedWrite()
+  }
+}
