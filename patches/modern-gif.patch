@@ -1,0 +1,20 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 648f9f1ec48b0794acff4747d10240e869f63fef..f0a7ed72c8a7c7055e489188fab8a407babdd27f 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1085,8 +1085,14 @@ class Encoder {
+       tint: this._config.tint
+     });
+     if (this._config.workerUrl) {
++      var transferable = [];
++      options.frames?.forEach(f => {
++        if (f.data.buffer instanceof ArrayBuffer) {
++          transferable.push(f.data.buffer);
++        }
++      });
+       this._worker = createWorker({ workerUrl: this._config.workerUrl });
+-      this._worker.call("encoder:init", options);
++      this._worker.call("encoder:init", options, transferable);
+     } else {
+       this._config.frames?.forEach((frame) => this.encode(frame));
+     }
