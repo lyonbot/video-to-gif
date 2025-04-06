@@ -7,42 +7,38 @@ on:
     branches: [main]
 
 jobs:
+  # Build job
   build:
+    # Specify runner +  build & upload the static files as an artifact
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-
+          node-version: 20
       - name: Build
         run: |
-          npm install -g pnpm@8.11.0
+          npm install -g pnpm@9.15.2
           pnpm install
           pnpm run build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v1
+      - name: Upload static files as artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
         with:
-          path: dist
+          path: dist/
 
-  # Deploy job
+  # Deployment job
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     permissions:
       pages: write
       id-token: write
     steps:
-      - uses: actions/deploy-pages@v1
+      - name: Deploy to GitHub Pages
         id: deployment
+        uses: actions/deploy-pages@v4
