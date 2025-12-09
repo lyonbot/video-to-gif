@@ -194,7 +194,10 @@ createRoot(() => {
     defaultOptions.watermarkIndex = idx
     if (idx !== store.options.watermarkIndex) updateStore('options', 'watermarkIndex', idx) // fix out-ranged index
   })
-  try { updateStore('watermarks', JSON.parse(localStorage.getItem(skWatermarks)!)) } catch { }
+  try { 
+    const s = localStorage.getItem(skWatermarks);
+    if (s) updateStore('watermarks', JSON.parse(s) || []);
+  } catch { }
   createEffect(on(() => JSON.stringify(store.watermarks), debouncedWriteWatermarks))
 })
 
